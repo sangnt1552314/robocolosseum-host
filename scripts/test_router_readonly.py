@@ -49,6 +49,25 @@ def _describe(obs) -> None:
         print(f"  state.{name}: {detail}")
 
 
+def _save_images(obs, index: int, out_dir: Path) -> None:
+    """Save each available decoded camera (RGB NumPy array) as a PNG."""
+    from PIL import Image
+
+    for name, suffix in (
+        ("left_image", "left"),
+        ("right_image", "right"),
+        ("head_image", "head"),
+    ):
+        arr = getattr(obs.state, name)
+        if arr is None:
+            print(f"  {name} missing; skipping")
+            continue
+        path = out_dir / f"obs_{index:03d}_{suffix}.png"
+        # SDK arrays are already RGB, which is the order Pillow expects.
+        Image.fromarray(arr).save(path)
+        print(f"Saved {name} -> {path}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--router-config", default=None)
@@ -56,12 +75,24 @@ def main() -> None:
         "--num", type=int, default=1, help="observations to inspect before exiting"
     )
     parser.add_argument("--timeout", type=float, default=120.0)
+    parser.add_argument(
+        "--save-images",
+        default=None,
+        metavar="DIR",
+        help="save decoded camera images from each observation into DIR",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
         level="INFO", format="%(asctime)s [%(levelname)s] %(message)s"
     )
     log = logging.getLogger("router-readonly")
+
+    save_dir = None
+    if args.save_images is not None:
+        save_dir = Path(args.save_images)
+        save_dir.mkdir(parents=True, exist_ok=True)
+        log.info("Saving camera images to %s", save_dir)
 
     from colosseum_policy_server import ColosseumPolicySDK, SDKConnectionError
 
@@ -82,6 +113,8 @@ def main() -> None:
                 break
 
             _describe(obs)
+            if save_dir is not None:
+                _save_images(obs, seen, save_dir)
             if sdk.robot is not None:
                 log.info(
                     "robot_type=%s joint_count=%s has_gripper=%s control_hz=%s",
