@@ -32,7 +32,7 @@ export HF_HOME=${SLURM_TMPDIR:-/tmp/$USER}/hf_cache
 export HF_HUB_CACHE=$HF_HOME/hub
 export TRANSFORMERS_CACHE=$HF_HOME/transformers
 export HF_DATASETS_CACHE=$HF_HOME/datasets
-export HF_HUB_OFFLINE=1
+# export HF_HUB_OFFLINE=1
 mkdir -p "$HF_HOME" "$HF_HUB_CACHE" "$TRANSFORMERS_CACHE" "$HF_DATASETS_CACHE"
 
 # Scratch tmp on local disk.
