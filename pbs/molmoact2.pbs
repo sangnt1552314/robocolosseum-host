@@ -1,0 +1,59 @@
+#!/bin/bash
+#PBS -P CFP05-CF-002
+#PBS -j oe
+#PBS -k oed
+#PBS -N colosseum-molmo
+#PBS -q auto
+#PBS -l select=1:ngpus=1
+#PBS -l walltime=02:00:00
+
+# ---------------------------------------------------------------------------
+# NUS Hopper PBS worker for the MolmoAct2 Colosseum policy.
+#
+# NOTE: walltime is a SAFETY CAP ONLY. The Python worker exits as soon as the
+# evaluation session finishes or a startup/idle timeout fires, so the GPU is
+# released immediately -- it does not run for the full walltime.
+# ---------------------------------------------------------------------------
+
+cd $PBS_O_WORKDIR
+
+image="/app1/common/singularity-img/hopper/pytorch/pytorch_2.6.0_cuda_12.8.sif"
+
+module load singularity
+
+LOG_DIR='./logs/molmoact2'
+mkdir -p $LOG_DIR
+
+singularity exec -e --nv \
+--env HF_HOME=/scratch/e1583535/cache \
+--env HF_HUB_OFFLINE=1 \
+--env TMPDIR=/scratch/e1583535/tmp \
+--env TEMP=/scratch/e1583535/tmp \
+--env TMP=/scratch/e1583535/tmp \
+$image bash << 'EOF' > $LOG_DIR/stdout.$PBS_JOBID.log 2> $LOG_DIR/stderr.$PBS_JOBID.log
+
+mkdir -p /scratch/e1583535/tmp
+
+if [ -d "/scratch/e1583535/virtualenvs/robocolosseum" ]; then
+    source /scratch/e1583535/virtualenvs/robocolosseum/bin/activate
+fi
+
+echo "Starting policy worker at $(date)"
+echo "Running on host: $(hostname)"
+echo "GPU info:"
+nvidia-smi --query-gpu=name,memory.total,memory.free --format=csv,noheader,nounits || echo "No GPU detected"
+
+# Router credentials MUST come from the environment (never commit them).
+# Set them before qsub, or source a private, git-ignored env file here:
+#   source /scratch/e1583535/secrets/colosseum.env
+# The file should export COLOSSEUM_ROUTER_URL and COLOSSEUM_TOKEN.
+
+# Dry run by default (no actions sent). Add --enable-action only when you are
+# ready to actually command the robot.
+python scripts/run_policy.py \
+    --policy molmoact2 \
+    --config configs/molmoact2.yaml \
+    --router-config configs/router.yaml
+
+echo "Policy worker ended at $(date)"
+EOF

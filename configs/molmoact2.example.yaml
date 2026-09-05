@@ -1,0 +1,28 @@
+policy:
+  name: molmoact2
+  checkpoint: allenai/MolmoAct2-DROID
+  dtype: bfloat16          # bfloat16 (<16GB) or float32 (~26GB)
+  device: cuda
+  # Adapter-specific options forwarded to MolmoAct2.predict_action:
+  norm_tag: franka_droid
+  inference_action_mode: continuous
+  num_steps: 10
+  normalize_language: true
+  enable_cuda_graph: true
+
+# Map MolmoAct2 DROID camera slots to Colosseum observation fields.
+# VERIFY this against a real observation using scripts/test_router_readonly.py
+# before trusting it. The exterior slot is duplicated by the adapter to match
+# the training layout [exterior_1, exterior_2, wrist].
+camera_mapping:
+  external: left_image
+  wrist: right_image
+
+runtime:
+  # walltime in PBS is only a safety cap. These timeouts decide how quickly the
+  # worker exits (and releases the GPU) once things go quiet.
+  startup_timeout_seconds: 600   # wait this long for the first session
+  idle_timeout_seconds: 600      # exit if no observation arrives for this long
+  action_spaces: [joint_position]
+  control_hz: 15
+  max_horizon: 16

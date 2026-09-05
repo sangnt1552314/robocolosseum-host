@@ -1,0 +1,10 @@
+# Router credentials. DO NOT COMMIT real values.
+#
+# Preferred: use environment variables (they take precedence over this file):
+#   export COLOSSEUM_ROUTER_URL="wss://router.example.com:8443"
+#   export COLOSSEUM_TOKEN="pol_..."
+#
+# Alternatively copy this file to configs/router.yaml (git-ignored) and run:
+#   chmod 600 configs/router.yaml
+url: wss://router.example.com:8443
+token: pol_replace_with_token_from_router_ui

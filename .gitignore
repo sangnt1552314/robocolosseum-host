@@ -216,3 +216,15 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Model weights / caches (models live in the shared Hopper cache)
+*.safetensors
+
+# Logs / PBS output
+*.log
+*.o[0-9]*
+*.e[0-9]*
+
+# Configs - Ignore all YAML in configs except example templates
+configs/*.yaml
+!configs/*.example.yaml
