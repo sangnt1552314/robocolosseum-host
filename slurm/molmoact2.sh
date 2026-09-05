@@ -27,8 +27,9 @@ mkdir -p "${LOG_DIR}"
 # Activate the project virtualenv.
 source "${HOME_PATH}/${ENV_NAME}/bin/activate"
 
-# Hugging Face cache on local disk; offline so nodes never hit the network.
-export HF_HOME=${SLURM_TMPDIR:-/tmp/$USER}/hf_cache
+# Hugging Face cache on persistent home storage so model downloads survive
+# across jobs (SLURM_TMPDIR is wiped when the job ends).
+export HF_HOME=${HOME_PATH}/cache
 export HF_HUB_CACHE=$HF_HOME/hub
 export TRANSFORMERS_CACHE=$HF_HOME/transformers
 export HF_DATASETS_CACHE=$HF_HOME/datasets
