@@ -3,7 +3,7 @@ import ssl
 import time
 
 HOST = "191.222.219.43"
-PORT = 8443
+PORT = 443
 TIMEOUT = 5
 
 print(f"Testing {HOST}:{PORT} ...")

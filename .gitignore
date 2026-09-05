@@ -228,3 +228,5 @@ __marimo__/
 # Configs - Ignore all YAML in configs except example templates
 configs/*.yaml
 !configs/*.example.yaml
+
+.vscode
