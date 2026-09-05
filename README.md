@@ -29,7 +29,8 @@ SDK. We never expose a public HTTP server.
 
 ```
 configs/    example policy + router YAML (real router.yaml is git-ignored)
-pbs/        PBS submission scripts (one per model environment)
+pbs/        PBS submission scripts (one per model environment) — NUS Hopper
+slurm/      SLURM submission scripts (one per model environment) — NUS SoC
 scripts/    run_policy.py + the two read-only test scripts
 src/robocolosseum/
     config.py       YAML + env-var configuration
@@ -101,7 +102,7 @@ python scripts/run_policy.py --policy molmoact2 --config configs/molmoact2.yaml
 python scripts/run_policy.py --policy molmoact2 --config configs/molmoact2.yaml --enable-action
 ```
 
-## Submit the PBS job
+## Submit the PBS job (NUS Hopper)
 
 ```bash
 qsub pbs/molmoact2.pbs
@@ -112,6 +113,23 @@ The script runs the worker inside the Hopper PyTorch singularity image
 `/scratch/e1583535/virtualenvs/robocolosseum`. Set your router credentials in
 the environment (or a private sourced file) before `qsub`. Confirm the PBS
 project (`CFP01-CF-002`) and resource line for your account.
+
+## Submit the SLURM job (NUS SoC)
+
+```bash
+sbatch slurm/molmoact2.sh
+```
+
+Unlike the Hopper PBS worker, the SoC script runs **natively** (no singularity)
+and activates the `py312` virtualenv at `/home/n/ntasang/py312`. Hugging Face
+model downloads are cached persistently at `/home/n/ntasang/cache` so they
+survive across jobs. Set your router credentials in the environment (or a
+private sourced file) before `sbatch`. Confirm the `--gres` GPU type
+(`h100-47:1`), `ENV_NAME`, and `HOME_PATH` for your account.
+
+> **Note:** `--time` (like PBS `walltime`) is a safety cap only — the worker
+> exits and SLURM releases the GPU as soon as the session finishes or a
+> startup/idle timeout fires.
 
 ## Safety
 
@@ -170,8 +188,10 @@ do **not** need to change. To add e.g. `OpenGalaxea/G05`, `lerobot/pi05_droid`,
    ```
    (Adapters are imported lazily, so each model can keep its own environment.)
 3. Add `configs/my_policy.yaml`.
-4. Add `pbs/my_policy.pbs` that activates that model's environment and runs
-   `scripts/run_policy.py --policy my_policy`.
+4. Add a submission script that activates that model's environment and runs
+   `scripts/run_policy.py --policy my_policy`:
+   * `pbs/my_policy.pbs` for NUS Hopper, and/or
+   * `slurm/my_policy.sh` for NUS SoC.
 5. Run the standard dry-run tests.
 
 ## Unverified assumptions
