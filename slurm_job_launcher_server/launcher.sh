@@ -51,6 +51,16 @@ if [[ -z "${LAUNCHER_API_TOKEN:-}" ]]; then
     echo "ERROR: LAUNCHER_API_TOKEN is not set. Export it before sbatch, or put it in ${LAUNCHER_ENV_FILE}." >&2
     exit 1
 fi
+
+# Optionally echo the token so you can copy it (e.g. to share with the
+# contractor). OFF by default because the value lands in the Slurm log, which
+# may be readable by others. Enable deliberately with LAUNCHER_ECHO_TOKEN=1.
+if [[ "${LAUNCHER_ECHO_TOKEN:-0}" == "1" ]]; then
+    echo "WARNING: echoing LAUNCHER_API_TOKEN to the log (LAUNCHER_ECHO_TOKEN=1)." >&2
+    echo "LAUNCHER_API_TOKEN=${LAUNCHER_API_TOKEN}"
+else
+    echo "LAUNCHER_API_TOKEN is set (length ${#LAUNCHER_API_TOKEN}). Set LAUNCHER_ECHO_TOKEN=1 to print it."
+fi
 if [[ ! -x "${NGROK_BIN}" ]]; then
     echo "ERROR: ngrok binary not found or not executable: ${NGROK_BIN}" >&2
     exit 1
