@@ -1,4 +1,4 @@
-# RoboColosseum Job Launcher (temporary control plane)
+# RoboColosseum Job Launcher (temporary control)
 
 A small, self-contained HTTP API that **submits, queries, lists and cancels**
 the GPU policy jobs on the NUS SoC Slurm cluster. It runs as a lightweight
@@ -33,17 +33,16 @@ which is unchanged and does not involve this launcher at all:
 Franka -> Aaron's router -> Colosseum SDK -> GPU policy worker -> MolmoAct2
 ```
 
-The launcher **never** handles camera streams, robot observations, actions,
-Colosseum sessions, or policy inference. It only starts and stops Slurm jobs.
+The launcher **never** touches camera streams, observations, actions, Colosseum
+sessions or inference — it only starts and stops Slurm jobs.
 
 ## 2. Prerequisites
 
-- NUS SoC Slurm access (submit host + `sbatch`/`squeue`/`sacct`/`scancel`).
-- Python 3.12 (the project's `py312` virtualenv at `/home/n/ntasang/py312`).
-- A free [ngrok](https://dashboard.ngrok.com) account (for the authtoken).
-- The ngrok binary installed in a user-owned path (see below).
+- NUS SoC Slurm access (`sbatch`/`squeue`/`sacct`/`scancel`).
+- Python 3.12 (`py312` venv at `/home/n/ntasang/py312`).
+- A free [ngrok](https://dashboard.ngrok.com) account + the ngrok binary.
 
-Install the launcher's Python dependencies into your environment:
+Install the launcher deps:
 
 ```bash
 source /home/n/ntasang/py312/bin/activate
@@ -52,88 +51,62 @@ pip install -r slurm_job_launcher_server/requirements.txt
 
 ## 3. Installing ngrok (no root)
 
-ngrok ships as a single static binary, so you can install it into your home
-directory without root. On the SoC cluster (Linux x86-64):
+ngrok is a single static binary — install it into your home dir without root
+(Linux x86-64):
 
 ```bash
-mkdir -p ~/bin
-cd /tmp
-# Verify the current download URL for your architecture at:
-#   https://ngrok.com/download
+mkdir -p ~/bin && cd /tmp
+# Verify the current URL for your arch at https://ngrok.com/download
 curl -L -o ngrok.tgz \
   https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
-tar -xzf ngrok.tgz
-mv ngrok ~/bin/ngrok
-chmod +x ~/bin/ngrok
-```
-
-> Check `uname -m` first. Use the `linux-amd64` build for `x86_64` and the
-> `linux-arm64` build for `aarch64`. Do not blindly trust the URL above — the
-> canonical, current links are on the ngrok download page.
-
-Confirm it works:
-
-```bash
+tar -xzf ngrok.tgz && mv ngrok ~/bin/ngrok && chmod +x ~/bin/ngrok
 ~/bin/ngrok version
 ```
 
-The default binary path in [launcher.example.yaml](launcher.example.yaml) is
-`/home/n/ntasang/bin/ngrok`. Override it with the `NGROK_BIN` env var or the
-`launcher.ngrok_bin` config key if yours lives elsewhere.
+> Check `uname -m`: use `linux-amd64` for `x86_64`, `linux-arm64` for `aarch64`.
+> Get the canonical link from the ngrok download page.
+
+Default binary path is `/home/n/ntasang/bin/ngrok` (override with `NGROK_BIN` or
+the `launcher.ngrok_bin` config key).
 
 ## 4. Configuring ngrok authentication
 
-Create a free ngrok account, copy your authtoken from the dashboard, and store
-it once in ngrok's local config:
+Store your authtoken once (from the dashboard):
 
 ```bash
 ~/bin/ngrok config add-authtoken <YOUR_NGROK_AUTHTOKEN>
 ```
 
-ngrok writes this to its per-user config file (typically
-`~/.config/ngrok/ngrok.yml` on Linux). You only need to do this once per
-machine/account.
+ngrok writes it to `~/.config/ngrok/ngrok.yml`.
 
-> **Never commit the ngrok authtoken or `ngrok.yml`.** It grants access to your
-> ngrok account.
+> **Never commit the authtoken or `ngrok.yml`.**
 
 ### Optional: auto-freeing the domain (ERR_NGROK_334)
 
-The free ngrok plan gives your account **one** static domain, and only one
-agent can hold it at a time. If a previous launcher crashed (e.g. `SIGKILL`, so
-its cleanup trap never ran), its agent may still hold the domain and a new
-launcher fails with `ERR_NGROK_334`.
+The free plan gives **one** static domain, held by one agent at a time. If a
+previous launcher crashed (e.g. `SIGKILL`), its agent may still hold the domain
+and a new launcher fails with `ERR_NGROK_334`.
 
-`launcher.sh` already retries past a briefly-lingering session and refuses to
-start if another `colosseum-launcher` Slurm job is running. To also stop a
-truly orphaned agent automatically, give the launcher an **ngrok API key**
-(create one at https://dashboard.ngrok.com/api-keys — this is *separate* from
-the agent authtoken):
+`launcher.sh` already retries past a brief lingering session and refuses to
+start if another `colosseum-launcher` job is running. To also stop a truly
+orphaned agent automatically, give it an **ngrok API key** (from
+https://dashboard.ngrok.com/api-keys — separate from the authtoken):
 
 ```bash
 # add to slurm_job_launcher_server/.env (git-ignored) or export before sbatch
 export NGROK_API_KEY='<your-ngrok-api-key>'
 ```
 
-When `NGROK_API_KEY` is set, the launcher stops any existing ngrok tunnel
-sessions on the account before starting its own. This step is best-effort: if
-it fails, the retry loop still runs. Without a key, clear a stuck endpoint
-manually from https://dashboard.ngrok.com/agents (or kill the stray `ngrok`
-process).
+When set, the launcher stops existing tunnel sessions before starting (best-
+effort; the retry loop still runs). Without a key, clear a stuck endpoint at
+https://dashboard.ngrok.com/agents or kill the stray `ngrok` process.
 
-> Treat `NGROK_API_KEY` like a secret: never commit, print, or log it. `.env`
-> is git-ignored.
+> Treat `NGROK_API_KEY` like a secret. `.env` is git-ignored.
 
 ## 5. Launcher API authentication
 
-Every endpoint (including `/health`) requires:
-
-```
-Authorization: Bearer <token>
-```
-
-The token is read from the `LAUNCHER_API_TOKEN` environment variable. It is
-never logged, never returned in an error, and compared in constant time.
+Every endpoint (including `/health`) requires `Authorization: Bearer <token>`,
+read from `LAUNCHER_API_TOKEN` (never logged/returned; constant-time compare).
 
 Generate a strong token:
 
@@ -141,17 +114,16 @@ Generate a strong token:
 python -c 'import secrets; print(secrets.token_urlsafe(32))'
 ```
 
-Provide it to the launcher in **one** of two ways:
+Provide it **one** of two ways:
 
-**Option A — export it before `sbatch`:**
+**A — export before `sbatch`:**
 
 ```bash
-export LAUNCHER_API_TOKEN='<paste-the-generated-token>'
+export LAUNCHER_API_TOKEN='<token>'
 ```
 
-**Option B (recommended) — put it in a private, git-ignored `.env` file** so it
-stays out of your shell history. `launcher.sh` sources this automatically at
-startup if `LAUNCHER_API_TOKEN` is not already set in the environment:
+**B (recommended) — private `.env` file** (`launcher.sh` sources it at startup if
+the var isn't already set):
 
 ```bash
 printf 'LAUNCHER_API_TOKEN=%s\n' "$(python -c 'import secrets; print(secrets.token_urlsafe(32))')" \
@@ -159,12 +131,10 @@ printf 'LAUNCHER_API_TOKEN=%s\n' "$(python -c 'import secrets; print(secrets.tok
 chmod 600 slurm_job_launcher_server/.env
 ```
 
-The default path is `slurm_job_launcher_server/.env` (override with the
-`LAUNCHER_ENV_FILE` env var). Any value already set in the environment takes
-precedence and is left untouched. `.env` is git-ignored.
+Default path `slurm_job_launcher_server/.env` (override with `LAUNCHER_ENV_FILE`);
+an already-set env value wins. `.env` is git-ignored.
 
-> Never hard-code, commit, or print this token. Share it with the contractor
-> over a secure channel only.
+> Never hard-code, commit or print this token. Share it out-of-band.
 
 ## 6. Configuration
 
@@ -298,35 +268,26 @@ through this API.
 
 ## 10. Multiple robots / concurrency
 
-The contractor has multiple Franka robots, so the launcher **allows multiple
-policy jobs at once** — there is no global "only one job" lock. Concurrency is
-bounded by two configurable safeguards:
+Multiple Franka robots → **multiple concurrent policy jobs** allowed (no global
+"one job" lock). Two configurable limits bound it:
 
-- `launcher.max_active_jobs` — global ceiling across all policy jobs.
-- `policies.<model>.max_replicas` — per-model concurrent cap.
+- `launcher.max_active_jobs` — global ceiling.
+- `policies.<model>.max_replicas` — per-model cap.
 
-Before submitting, the launcher (under a process-level lock) checks both limits
-and rejects with a clear, machine-readable error if either is exceeded:
-
-- `409 global_limit_reached`
-- `429 model_replica_limit_reached`
-
-It never auto-cancels another job to make room. The launcher does **not** decide
-which policy controls which Franka — that stays with Aaron's matchmaking/routing
-infrastructure.
+Before submitting (under a process lock) both are checked, rejecting with
+`409 global_limit_reached` or `429 model_replica_limit_reached`. It never
+auto-cancels to make room, and does **not** decide which policy controls which
+Franka — that stays with Aaron's routing.
 
 > **V1 assumes a single launcher process** (one Uvicorn worker + one in-process
-> admission lock). Do not scale it to multiple workers without adding shared
-> coordination.
+> lock). Don't scale to multiple workers without shared coordination.
 
 ## 11. Secrets & child-job isolation
 
-Child GPU jobs are submitted with `sbatch --export=NONE`, so the policy worker
-sets up its own environment (via `slurm/molmoact2.sh`) and does **not** inherit
-launcher-only secrets such as `LAUNCHER_API_TOKEN` or ngrok credentials.
-
-The launcher does not modify `slurm/molmoact2.sh` and never appends
-`--enable-action`; the GPU worker keeps its safe dry-run default.
+Child GPU jobs run with `sbatch --export=NONE`, so they set up their own env
+(via `slurm/molmoact2.sh`) and never inherit `LAUNCHER_API_TOKEN` or ngrok
+creds. The launcher never modifies `slurm/molmoact2.sh` or appends
+`--enable-action` — the worker keeps its dry-run default.
 
 ## 12. Stopping the launcher
 
@@ -334,9 +295,9 @@ The launcher does not modify `slurm/molmoact2.sh` and never appends
 scancel <launcher_job_id>
 ```
 
-The Slurm `trap` in `launcher.sh` tears down ngrok and Uvicorn cleanly.
-**Stopping the launcher does NOT cancel running GPU policy jobs** — those keep
-running under Slurm until they finish or are cancelled explicitly.
+The `trap` in `launcher.sh` tears down ngrok and Uvicorn. **Stopping the
+launcher does NOT cancel running GPU policy jobs** — they keep running until they
+finish or are cancelled explicitly.
 
 ## 13. Troubleshooting
 

@@ -1,9 +1,9 @@
 # robocolosseum-hosted
 
-Modular robotics **policy hosting** for the FrodoBots Colosseum, running as a
-PBS GPU job on NUS Hopper. The contractor hosts routing, matchmaking and
-scoring; **we host only policy inference**. The first supported policy is
-`allenai/MolmoAct2-DROID`.
+Modular **policy hosting** for the FrodoBots Colosseum. The contractor runs
+routing, matchmaking and scoring; **we host only policy inference** as a GPU job
+(PBS on NUS Hopper, SLURM on NUS SoC). Supported: `allenai/MolmoAct2-DROID` and
+`lerobot/pi05_droid`.
 
 ## Architecture
 
@@ -24,7 +24,6 @@ Colosseum SDK  →  Router / robot   (only with --enable-action)
 The compute node opens an **outbound** WebSocket to the router using the
 official [`colosseum-policy-server`](https://github.com/frodobots-org/colosseum-policy-server)
 SDK. We never expose a public HTTP server.
-
 ## Layout
 
 ```
@@ -44,61 +43,52 @@ src/robocolosseum/
 
 ## Setup
 
-There is no packaging step yet — the scripts add `src/` to `sys.path`
-themselves, so just install the dependencies into the model's environment and
-run the scripts directly.
+No packaging step — scripts add `src/` to `sys.path`. Install deps into the
+model's environment and run directly.
 
-1. **Install the Colosseum SDK** (no PyPI release):
+1. **Colosseum SDK** (no PyPI release):
 
    ```bash
    pip install "colosseum-policy-server @ git+https://github.com/frodobots-org/colosseum-policy-server"
    ```
 
-2. **Install the MolmoAct2 dependencies** in the same environment:
+2. **Model deps** — MolmoAct2: `pip install torch transformers pillow numpy pyyaml`
+   (add `opencv-python` only if the router streams JPEG/PNG). pi05_droid:
+   `pip install lerobot`.
 
-   ```bash
-   pip install torch transformers pillow numpy pyyaml
-   # Add opencv-python only if the router streams JPEG/PNG frames (not RAW_RGB).
-   ```
-
-3. **Use the existing Hugging Face cache** (the checkpoint is already on Hopper
-   at `/scratch/e1583535/cache`):
+3. **Use the existing HF cache** (checkpoint already on Hopper):
 
    ```bash
    export HF_HOME=/scratch/e1583535/cache
    export HF_HUB_OFFLINE=1
    ```
 
-4. **Configure the router credentials** (never commit them). Either:
+4. **Router credentials** (never commit). Env vars:
 
    ```bash
    export COLOSSEUM_ROUTER_URL="wss://router.example.com:8443"
    export COLOSSEUM_TOKEN="pol_..."
    ```
 
-   or copy `configs/router.example.yaml` to `configs/router.yaml` (git-ignored),
-   `chmod 600 configs/router.yaml`, and pass `--router-config configs/router.yaml`.
+   or copy `configs/router.example.yaml` → `configs/router.yaml` (git-ignored,
+   `chmod 600`) and pass `--router-config configs/router.yaml`.
 
-5. **Copy the policy config**:
-
-   ```bash
-   cp configs/molmoact2.example.yaml configs/molmoact2.yaml
-   ```
+5. **Policy config**: `cp configs/molmoact2.example.yaml configs/molmoact2.yaml`
+   (or `configs/pi05_droid.example.yaml`).
 
 ## Running the milestone tests (in order)
 
 ```bash
-# 1. Mock inference — no router, no robot. Loads the checkpoint and produces
-#    an action chunk from fake DROID-style input.
+# 1. Mock inference — no router/robot. Loads the checkpoint, produces an action.
 python scripts/test_molmo_mock.py --config configs/molmoact2.yaml
 
 # 2. Read-only router — inspect a REAL observation. Never sends an action.
 python scripts/test_router_readonly.py
 
-# 3. Integrated dry run — Router → MolmoAct2 → printed action (nothing sent).
+# 3. Dry run — Router → model → printed action (nothing sent).
 python scripts/run_policy.py --policy molmoact2 --config configs/molmoact2.yaml
 
-# 4. Only when you are ready to actually move the robot:
+# 4. Move the robot (only when ready):
 python scripts/run_policy.py --policy molmoact2 --config configs/molmoact2.yaml --enable-action
 ```
 
@@ -108,56 +98,39 @@ python scripts/run_policy.py --policy molmoact2 --config configs/molmoact2.yaml 
 qsub pbs/molmoact2.pbs
 ```
 
-The script runs the worker inside the Hopper PyTorch singularity image
-(`pytorch_2.6.0_cuda_12.8.sif`) and activates
-`/scratch/e1583535/virtualenvs/robocolosseum`. Set your router credentials in
-the environment (or a private sourced file) before `qsub`. Confirm the PBS
-project (`CFP01-CF-002`) and resource line for your account.
+Runs inside the Hopper PyTorch singularity image (`pytorch_2.6.0_cuda_12.8.sif`)
+and activates `/scratch/e1583535/virtualenvs/robocolosseum`. Set router
+credentials before `qsub`; confirm the PBS project and resource line.
 
 ## Submit the SLURM job (NUS SoC)
 
 ```bash
-sbatch slurm/molmoact2.sh
+sbatch slurm/molmoact2.sh        # or slurm/pi05_droid.sh
 ```
 
-Unlike the Hopper PBS worker, the SoC script runs **natively** (no singularity)
-and activates the `py312` virtualenv at `/home/n/ntasang/py312`. Hugging Face
-model downloads are cached persistently at `/home/n/ntasang/cache` so they
-survive across jobs. Set your router credentials in the environment (or a
-private sourced file) before `sbatch`. Confirm the `--gres` GPU type
-(`h100-47:1`), `ENV_NAME`, and `HOME_PATH` for your account.
+Runs **natively** (no singularity), activates `py312` at
+`/home/n/ntasang/py312`, caches HF models at `/home/n/ntasang/cache`. Set router
+credentials before `sbatch`; confirm `--gres`, `ENV_NAME`, `HOME_PATH`.
 
 > **Note:** `--time` (like PBS `walltime`) is a safety cap only — the worker
-> exits and SLURM releases the GPU as soon as the session finishes or a
+> exits and the GPU is released as soon as the session finishes or a
 > startup/idle timeout fires.
 
 ## Safety
 
-> **By default, no actions are sent to the robot.** The worker prints and
-> validates the action chunk only.
->
-> Actual robot actions require the explicit flag:
-> ```
-> --enable-action
-> ```
+> **No actions are sent by default** — the worker only prints and validates the
+> action chunk. Sending requires the explicit `--enable-action` flag.
 
-Every action chunk is validated (finite, correct dimensionality, correct
-`action_dim`, within the horizon limit) before it could ever be sent; the SDK
-re-validates on `send_action`.
+Every chunk is validated (finite, correct dims/`action_dim`, within horizon)
+before it could be sent; the SDK re-validates on `send_action`.
 
-## PBS behavior (GPU release)
+## GPU release
 
-`walltime` is the **maximum** allowed duration, not a target. The worker exits
-— and PBS releases the GPU — as soon as **any** of these happens:
-
-* the evaluation session completes,
-* the startup timeout elapses with no session,
-* the idle timeout elapses with no new observation,
-* an unrecoverable error occurs (non-zero exit).
-
-There are no artificial `sleep` loops keeping the job alive. Tune
-`runtime.idle_timeout_seconds` to control how quickly the worker gives up after
-the last observation.
+`walltime` / `--time` is a **maximum**, not a target. The worker exits — freeing
+the GPU — as soon as **any** of these happen: the session completes, the startup
+timeout elapses with no session, the idle timeout elapses with no new
+observation, or an unrecoverable error occurs. No `sleep` loops keep it alive;
+tune `runtime.idle_timeout_seconds`.
 
 ### Session semantics (verified against the SDK)
 
@@ -196,22 +169,16 @@ do **not** need to change. To add e.g. `OpenGalaxea/G05`, `lerobot/pi05_droid`,
 
 ### Example: `lerobot/pi05_droid` (already wired)
 
-The pi0.5 DROID policy is included as a second worked example:
-
-* Adapter: `src/robocolosseum/policies/pi05_droid.py` (`Pi05Adapter`), built on
-  the LeRobot `PI0Policy` API (`from_pretrained`, `make_pre_post_processors`,
-  `predict_action_chunk`). The processor pipeline handles input normalisation
-  and language tokenisation; the post-processor un-normalises the actions.
-* Registered as `"pi05_droid"` in `registry.py`.
-* Config: `configs/pi05_droid.example.yaml` → copy to `configs/pi05_droid.yaml`.
-* SoC submission script: `slurm/pi05_droid.sh` (job name `colosseum-pi05`).
-* Launcher registry entry: `pi05-droid` in
-  `slurm_job_launcher_server/launcher.example.yaml`.
-
-Before running it, install LeRobot into that model's environment
-(`pip install lerobot`) and **verify** the camera batch keys
-(`observation.images.exterior_image_*_left` / `wrist_image_left`) and the state
-layout against the real `lerobot/pi05_droid` config and a live observation.
+* Adapter `src/robocolosseum/policies/pi05_droid.py` (`Pi05Adapter`) on the
+  LeRobot `PI0Policy` API (`from_pretrained`, `make_pre_post_processors`,
+  `predict_action_chunk`). The processor normalises inputs and tokenises the
+  instruction; the post-processor un-normalises actions.
+* Registered `"pi05_droid"`; config `configs/pi05_droid.example.yaml`; script
+  `slurm/pi05_droid.sh` (`colosseum-pi05`); launcher entry `pi05-droid`.
+* Install `lerobot` in that env first. Checkpoint specifics already set in the
+  config: image keys `base_0_rgb` / `left_wrist_0_rgb`, and `action_dim: 8`
+  (pi0.5 pads actions to 32 — only the first 8 DROID dims are used). **Verify**
+  the camera mapping and state layout against a live observation.
 
 ## Unverified assumptions
 
