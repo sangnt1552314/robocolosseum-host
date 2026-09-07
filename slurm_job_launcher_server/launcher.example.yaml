@@ -19,3 +19,7 @@ policies:
     script: slurm/molmoact2.sh
     slurm_job_name: colosseum-molmo
     max_replicas: 3
+  pi05-droid:
+    script: slurm/pi05_droid.sh
+    slurm_job_name: colosseum-pi05
+    max_replicas: 3

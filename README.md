@@ -194,6 +194,25 @@ do **not** need to change. To add e.g. `OpenGalaxea/G05`, `lerobot/pi05_droid`,
    * `slurm/my_policy.sh` for NUS SoC.
 5. Run the standard dry-run tests.
 
+### Example: `lerobot/pi05_droid` (already wired)
+
+The pi0.5 DROID policy is included as a second worked example:
+
+* Adapter: `src/robocolosseum/policies/pi05_droid.py` (`Pi05Adapter`), built on
+  the LeRobot `PI0Policy` API (`from_pretrained`, `make_pre_post_processors`,
+  `predict_action_chunk`). The processor pipeline handles input normalisation
+  and language tokenisation; the post-processor un-normalises the actions.
+* Registered as `"pi05_droid"` in `registry.py`.
+* Config: `configs/pi05_droid.example.yaml` → copy to `configs/pi05_droid.yaml`.
+* SoC submission script: `slurm/pi05_droid.sh` (job name `colosseum-pi05`).
+* Launcher registry entry: `pi05-droid` in
+  `slurm_job_launcher_server/launcher.example.yaml`.
+
+Before running it, install LeRobot into that model's environment
+(`pip install lerobot`) and **verify** the camera batch keys
+(`observation.images.exterior_image_*_left` / `wrist_image_left`) and the state
+layout against the real `lerobot/pi05_droid` config and a live observation.
+
 ## Unverified assumptions
 
 * **Camera mapping** (`external: left_image`, `wrist: right_image`) is a
