@@ -7,15 +7,15 @@ policy:
   device: cuda
   # Adapter-specific options.
   #
-  # LeRobot batch keys for the DROID camera layout [exterior_1, exterior_2,
-  # wrist]. The single Colosseum exterior slot is duplicated into exterior_1
-  # and exterior_2 to match the training layout (same approach as MolmoAct2).
-  # VERIFY these key names against the checkpoint config and the installed
-  # lerobot version before trusting the output.
+  # LeRobot/openpi batch keys for the pi05_droid checkpoint. The Colosseum
+  # exterior slot feeds `base`, the wrist feeds `left_wrist`. `right_wrist` is
+  # optional (single-arm DROID has one wrist); leave it unset and the policy's
+  # image preprocessor pads/masks the missing camera. These key names come from
+  # the checkpoint's config.image_features -- VERIFY if you change checkpoints.
   image_keys:
-    exterior_1: observation.images.exterior_image_1_left
-    exterior_2: observation.images.exterior_image_2_left
-    wrist: observation.images.wrist_image_left
+    base: observation.images.base_0_rgb
+    left_wrist: observation.images.left_wrist_0_rgb
+    # right_wrist: observation.images.right_wrist_0_rgb
   state_key: observation.state
   task_key: task
 

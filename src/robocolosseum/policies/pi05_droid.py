@@ -39,14 +39,16 @@ class Pi05Adapter(BasePolicyAdapter):
         self.camera = config.camera_mapping
 
         opts = self.policy_cfg.options
+        # Batch keys expected by the lerobot/pi05_droid checkpoint (openpi
+        # naming). The exterior camera feeds ``base``, the wrist feeds
+        # ``left_wrist``; ``right_wrist`` is optional (a missing camera is
+        # zero-padded and masked by the policy's image preprocessor).
         image_keys = opts.get("image_keys", {}) or {}
-        self.exterior_1_key = image_keys.get(
-            "exterior_1", "observation.images.exterior_image_1_left"
+        self.base_key = image_keys.get("base", "observation.images.base_0_rgb")
+        self.left_wrist_key = image_keys.get(
+            "left_wrist", "observation.images.left_wrist_0_rgb"
         )
-        self.exterior_2_key = image_keys.get(
-            "exterior_2", "observation.images.exterior_image_2_left"
-        )
-        self.wrist_key = image_keys.get("wrist", "observation.images.wrist_image_left")
+        self.right_wrist_key = image_keys.get("right_wrist") or None
         self.state_key = opts.get("state_key", "observation.state")
         self.task_key = opts.get("task_key", "task")
 
@@ -75,10 +77,11 @@ class Pi05Adapter(BasePolicyAdapter):
 
     def _image(self, arr: Any) -> Any:
         torch = self._torch
-        img = np.asarray(arr)
+        # copy=True: SDK-decoded frames may be read-only, which torch rejects.
+        img = np.array(arr, dtype=np.float32, copy=True)
         if img.ndim != 3:
             raise ValueError(f"Expected an HWC image, got shape {img.shape}")
-        tensor = torch.from_numpy(np.ascontiguousarray(img)).float()
+        tensor = torch.from_numpy(np.ascontiguousarray(img))
         # LeRobot expects images normalised to [0, 1]; scale 8-bit input.
         if float(tensor.max()) > 1.0:
             tensor = tensor / 255.0
@@ -117,14 +120,18 @@ class Pi05Adapter(BasePolicyAdapter):
             )
 
         exterior_img = self._image(external)
-        # Single exterior camera duplicated into both DROID exterior slots.
+        wrist_img = self._image(wrist)
+        # Exterior -> base camera, wrist -> left wrist. right_wrist is optional
+        # (single-arm DROID has one wrist); if configured, reuse the wrist frame,
+        # otherwise the policy's preprocessor pads/masks the missing slot.
         batch = {
-            self.exterior_1_key: exterior_img,
-            self.exterior_2_key: exterior_img,
-            self.wrist_key: self._image(wrist),
+            self.base_key: exterior_img,
+            self.left_wrist_key: wrist_img,
             self.state_key: self._state(observation),
             self.task_key: observation.instruction or "",
         }
+        if self.right_wrist_key:
+            batch[self.right_wrist_key] = wrist_img
 
         with torch.inference_mode():
             processed = self.preprocessor(batch)
