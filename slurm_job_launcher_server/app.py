@@ -46,7 +46,15 @@ def create_app(
     # Fast-path idempotency cache; the durable backstop is the Slurm --comment.
     idempotency: dict[str, str] = {}
 
-    app = FastAPI(title="RoboColosseum Job Launcher", version="1.0")
+    app = FastAPI(
+        title="RoboColosseum Job Launcher",
+        version="1.0",
+        description=(
+            "Control-plane API to submit, query, list and cancel GPU policy "
+            "jobs on the NUS SoC Slurm cluster. All endpoints require a Bearer "
+            "token (LAUNCHER_API_TOKEN). Interactive docs: /docs and /redoc."
+        ),
+    )
 
     @app.exception_handler(APIError)
     async def _api_error_handler(_: Request, exc: APIError) -> JSONResponse:

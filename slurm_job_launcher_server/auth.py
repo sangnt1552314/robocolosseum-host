@@ -10,23 +10,23 @@ from __future__ import annotations
 import os
 import secrets
 
-from fastapi import Request
+from fastapi import Security
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .errors import APIError
 
 _ENV_VAR = "LAUNCHER_API_TOKEN"
 
-
-def _extract_bearer(header: str | None) -> str | None:
-    if not header:
-        return None
-    parts = header.split(" ", 1)
-    if len(parts) != 2 or parts[0].lower() != "bearer":
-        return None
-    return parts[1].strip()
+# Declared as an OpenAPI security scheme so the Swagger UI (/docs) shows an
+# "Authorize" button. auto_error=False lets us return our own JSON error shape.
+bearer_scheme = HTTPBearer(
+    auto_error=False, description="Launcher API token (LAUNCHER_API_TOKEN)"
+)
 
 
-async def require_token(request: Request) -> None:
+async def require_token(
+    credentials: HTTPAuthorizationCredentials | None = Security(bearer_scheme),
+) -> None:
     """FastAPI dependency enforcing ``Authorization: Bearer <token>``."""
 
     expected = os.environ.get(_ENV_VAR)
@@ -35,6 +35,6 @@ async def require_token(request: Request) -> None:
         # generic message; the launcher.sh script validates this at startup.
         raise APIError(500, "server_not_configured", "Launcher is not configured.")
 
-    presented = _extract_bearer(request.headers.get("Authorization"))
+    presented = credentials.credentials if credentials else None
     if presented is None or not secrets.compare_digest(presented, expected):
         raise APIError(401, "unauthorized", "Missing or invalid API token.")

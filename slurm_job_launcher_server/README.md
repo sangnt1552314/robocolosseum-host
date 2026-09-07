@@ -198,8 +198,16 @@ LAUNCHER PUBLIC URL: https://example.ngrok-free.app
 
 ## 9. API reference
 
-All requests require `Authorization: Bearer $LAUNCHER_API_TOKEN`.
-Set a shell variable for convenience:
+The API is self-documenting (FastAPI). With the launcher running, open in a
+browser:
+
+- **Swagger UI** — `<ngrok-url>/docs` (click **Authorize**, paste your token to
+  try endpoints live)
+- **ReDoc** — `<ngrok-url>/redoc`
+- **OpenAPI schema** — `<ngrok-url>/openapi.json` (import into Postman/clients)
+
+The `curl` reference below mirrors those docs. All requests require
+`Authorization: Bearer $LAUNCHER_API_TOKEN`. Set a shell variable for convenience:
 
 ```bash
 URL=https://<ngrok-url>
