@@ -33,7 +33,7 @@ def test_valid_token_allows_health(client):
 def test_missing_env_token_is_server_error(config, backend, monkeypatch):
     from fastapi.testclient import TestClient
 
-    from job_launcher_server.app import create_app
+    from slurm_job_launcher_server.app import create_app
 
     monkeypatch.delenv("LAUNCHER_API_TOKEN", raising=False)
     app = create_app(config=config, backend=backend)

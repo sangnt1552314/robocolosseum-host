@@ -1,0 +1,11 @@
+launcher:
+  host: 127.0.0.1
+  port: 8000
+  max_active_jobs: 10
+  ngrok_bin: 
+
+policies:
+  molmoact2-droid:
+    script: slurm/molmoact2.sh
+    slurm_job_name: colosseum-molmo
+    max_replicas: 3

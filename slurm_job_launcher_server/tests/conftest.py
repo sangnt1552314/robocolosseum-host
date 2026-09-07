@@ -9,10 +9,10 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from job_launcher_server.app import create_app
-from job_launcher_server.config import LauncherConfig, PolicyEntry
-from job_launcher_server.registry import PolicyRegistry
-from job_launcher_server.slurm_backend import SlurmBackend
+from slurm_job_launcher_server.app import create_app
+from slurm_job_launcher_server.config import LauncherConfig, PolicyEntry
+from slurm_job_launcher_server.registry import PolicyRegistry
+from slurm_job_launcher_server.slurm_backend import SlurmBackend
 
 TOKEN = "test-token-value"
 

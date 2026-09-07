@@ -47,7 +47,7 @@ Install the launcher's Python dependencies into your environment:
 
 ```bash
 source /home/n/ntasang/py312/bin/activate
-pip install -r job_launcher_server/requirements.txt
+pip install -r slurm_job_launcher_server/requirements.txt
 ```
 
 ## 3. Installing ngrok (no root)
@@ -108,12 +108,33 @@ Authorization: Bearer <token>
 The token is read from the `LAUNCHER_API_TOKEN` environment variable. It is
 never logged, never returned in an error, and compared in constant time.
 
-Generate a strong token and export it **before** submitting the launcher job:
+Generate a strong token:
 
 ```bash
 python -c 'import secrets; print(secrets.token_urlsafe(32))'
+```
+
+Provide it to the launcher in **one** of two ways:
+
+**Option A — export it before `sbatch`:**
+
+```bash
 export LAUNCHER_API_TOKEN='<paste-the-generated-token>'
 ```
+
+**Option B (recommended) — put it in a private, git-ignored `.env` file** so it
+stays out of your shell history. `launcher.sh` sources this automatically at
+startup if `LAUNCHER_API_TOKEN` is not already set in the environment:
+
+```bash
+printf 'LAUNCHER_API_TOKEN=%s\n' "$(python -c 'import secrets; print(secrets.token_urlsafe(32))')" \
+  > slurm_job_launcher_server/.env
+chmod 600 slurm_job_launcher_server/.env
+```
+
+The default path is `slurm_job_launcher_server/.env` (override with the
+`LAUNCHER_ENV_FILE` env var). Any value already set in the environment takes
+precedence and is left untouched. `.env` is git-ignored.
 
 > Never hard-code, commit, or print this token. Share it with the contractor
 > over a secure channel only.
@@ -123,7 +144,7 @@ export LAUNCHER_API_TOKEN='<paste-the-generated-token>'
 Copy the example config and edit if needed (the real file is git-ignored):
 
 ```bash
-cp job_launcher_server/launcher.example.yaml job_launcher_server/launcher.yaml
+cp slurm_job_launcher_server/launcher.example.yaml slurm_job_launcher_server/launcher.yaml
 ```
 
 ```yaml
@@ -146,10 +167,11 @@ supply an arbitrary script, shell command, or Slurm argument.
 
 ## 7. Starting the launcher
 
-From the project root, with `LAUNCHER_API_TOKEN` exported:
+From the project root, with `LAUNCHER_API_TOKEN` exported (or set in
+`slurm_job_launcher_server/.env`):
 
 ```bash
-sbatch job_launcher_server/launcher.slurm
+sbatch slurm_job_launcher_server/launcher.sh
 ```
 
 Find the launcher's Slurm job id:
@@ -285,7 +307,7 @@ The launcher does not modify `slurm/molmoact2.sh` and never appends
 scancel <launcher_job_id>
 ```
 
-The Slurm `trap` in `launcher.slurm` tears down ngrok and Uvicorn cleanly.
+The Slurm `trap` in `launcher.sh` tears down ngrok and Uvicorn cleanly.
 **Stopping the launcher does NOT cancel running GPU policy jobs** — those keep
 running under Slurm until they finish or are cancelled explicitly.
 
@@ -308,5 +330,5 @@ running under Slurm until they finish or are cancelled explicitly.
 All Slurm subprocess calls are mocked — the tests never submit real jobs:
 
 ```bash
-python -m pytest job_launcher_server/tests/ -q
+python -m pytest slurm_job_launcher_server/tests/ -q
 ```

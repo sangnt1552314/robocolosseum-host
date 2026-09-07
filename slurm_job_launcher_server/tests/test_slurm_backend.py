@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from job_launcher_server.registry import PolicyRegistry
-from job_launcher_server.slurm_backend import SlurmBackend, SlurmError
+from slurm_job_launcher_server.registry import PolicyRegistry
+from slurm_job_launcher_server.slurm_backend import SlurmBackend, SlurmError
 
 from .conftest import make_config
 

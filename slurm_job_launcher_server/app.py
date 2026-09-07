@@ -195,5 +195,5 @@ def _validate_job_id(job_id: str) -> None:
         raise APIError(400, "invalid_job_id", "Job id must be numeric.")
 
 
-# Module-level ASGI app for `uvicorn job_launcher_server.app:app`.
+# Module-level ASGI app for `uvicorn slurm_job_launcher_server.app:app`.
 app = create_app()

@@ -34,9 +34,21 @@ cd "${PROJECT_PATH}" || { echo "Project path not found: ${PROJECT_PATH}"; exit 1
 
 mkdir -p ./logs/launcher
 
+# --- load secrets from a private, git-ignored env file (if present) --------
+# Preferred: keep LAUNCHER_API_TOKEN out of your shell history by putting it in
+# slurm_job_launcher_server/.env (chmod 600, never committed). An already-set
+# environment value takes precedence and is left untouched.
+LAUNCHER_ENV_FILE="${LAUNCHER_ENV_FILE:-slurm_job_launcher_server/.env}"
+if [[ -z "${LAUNCHER_API_TOKEN:-}" && -f "${LAUNCHER_ENV_FILE}" ]]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "${LAUNCHER_ENV_FILE}"
+    set +a
+fi
+
 # --- validate required secrets (never print their values) ------------------
 if [[ -z "${LAUNCHER_API_TOKEN:-}" ]]; then
-    echo "ERROR: LAUNCHER_API_TOKEN is not set. Export it before sbatch." >&2
+    echo "ERROR: LAUNCHER_API_TOKEN is not set. Export it before sbatch, or put it in ${LAUNCHER_ENV_FILE}." >&2
     exit 1
 fi
 if [[ ! -x "${NGROK_BIN}" ]]; then
@@ -63,7 +75,7 @@ cleanup() {
 trap cleanup TERM INT EXIT
 
 # --- start Uvicorn (single worker; see README on why V1 is one process) ----
-python -m uvicorn job_launcher_server.app:app \
+python -m uvicorn slurm_job_launcher_server.app:app \
     --host "${LAUNCHER_HOST}" \
     --port "${LAUNCHER_PORT}" \
     --workers 1 &

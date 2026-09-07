@@ -32,7 +32,7 @@ async def require_token(request: Request) -> None:
     expected = os.environ.get(_ENV_VAR)
     if not expected:
         # Fail closed but do not leak that the server is misconfigured beyond a
-        # generic message; the launcher.slurm script validates this at startup.
+        # generic message; the launcher.sh script validates this at startup.
         raise APIError(500, "server_not_configured", "Launcher is not configured.")
 
     presented = _extract_bearer(request.headers.get("Authorization"))
