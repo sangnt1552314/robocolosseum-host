@@ -18,6 +18,9 @@ policy:
     # right_wrist: observation.images.right_wrist_0_rgb
   state_key: observation.state
   task_key: task
+  # pi0.5 pads actions to the model's max_action_dim (32). Keep only the real
+  # DROID action dims (7 joints + 1 gripper). Set null to disable slicing.
+  action_dim: 8
 
 # Map the Colosseum observation fields to the exterior / wrist camera slots.
 # VERIFY against a real observation using scripts/test_router_readonly.py.

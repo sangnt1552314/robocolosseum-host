@@ -51,6 +51,10 @@ class Pi05Adapter(BasePolicyAdapter):
         self.right_wrist_key = image_keys.get("right_wrist") or None
         self.state_key = opts.get("state_key", "observation.state")
         self.task_key = opts.get("task_key", "task")
+        # pi0.5 pads actions to the model's max_action_dim (32). Keep only the
+        # real robot action dims (DROID: 7 joints + 1 gripper). None = no slice.
+        action_dim = opts.get("action_dim", 8)
+        self.action_dim = int(action_dim) if action_dim is not None else None
 
         self._torch: Any = None
         self.policy: Any = None
@@ -154,6 +158,9 @@ class Pi05Adapter(BasePolicyAdapter):
         actions = np.asarray(actions, dtype=np.float32)
         if actions.ndim == 3 and actions.shape[0] == 1:
             actions = actions[0]
+        # Drop the zero-padded model dims, keeping the real robot action.
+        if self.action_dim is not None and actions.shape[-1] > self.action_dim:
+            actions = actions[..., : self.action_dim]
         return actions
 
     def reset(self) -> None:
