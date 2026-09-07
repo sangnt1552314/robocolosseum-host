@@ -1,0 +1,21 @@
+# Launcher configuration (non-secret). Copy to launcher.yaml and edit as needed.
+# Secrets (LAUNCHER_API_TOKEN) come from the environment only -- never here.
+
+launcher:
+  host: 127.0.0.1
+  port: 8000
+  # Hard ceiling across ALL policy jobs this launcher manages.
+  max_active_jobs: 10
+  # Path to the ngrok binary on the cluster (override with NGROK_BIN env var).
+  ngrok_bin: /home/n/ntasang/bin/ngrok
+  # Repository root the Slurm scripts live in (override with PROJECT_ROOT env
+  # var). Defaults to the parent of this package if omitted.
+  # project_root: /home/n/ntasang/projects/robocolosseum-host
+
+# Strict registry. The HTTP caller may only pick one of these model names; the
+# script, Slurm job name and replica cap are fixed here, never caller-supplied.
+policies:
+  molmoact2-droid:
+    script: slurm/molmoact2.sh
+    slurm_job_name: colosseum-molmo
+    max_replicas: 3
