@@ -88,6 +88,14 @@ class Pi05Adapter(BasePolicyAdapter):
         # HWC -> CHW, add a leading batch dimension.
         return tensor.permute(2, 0, 1).unsqueeze(0)
 
+    def _to_device(self, batch: dict[str, Any]) -> dict[str, Any]:
+        torch = self._torch
+        device = self.policy_cfg.device
+        return {
+            key: value.to(device) if isinstance(value, torch.Tensor) else value
+            for key, value in batch.items()
+        }
+
     def _state(self, observation: Any) -> Any:
         torch = self._torch
         joints = observation.state.joints
@@ -135,6 +143,9 @@ class Pi05Adapter(BasePolicyAdapter):
 
         with torch.inference_mode():
             processed = self.preprocessor(batch)
+            # The tokeniser adds language tensors on CPU; make the whole batch
+            # match the model's device before inference.
+            processed = self._to_device(processed)
             actions = self.policy.predict_action_chunk(processed)
             actions = self.postprocessor(actions)
 
