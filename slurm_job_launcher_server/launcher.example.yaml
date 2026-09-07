@@ -6,6 +6,10 @@ launcher:
   port: 8000
   # Hard ceiling across ALL policy jobs this launcher manages.
   max_active_jobs: 10
+  # Safety gate for physical control. While false, POST /jobs with
+  # enable_action=true is rejected (403). Set true only when an operator has
+  # verified the robot is safe to move.
+  allow_enable_action: false
   # Path to the ngrok binary on the cluster (override with NGROK_BIN env var).
   ngrok_bin: /home/n/ntasang/bin/ngrok
   # Repository root the Slurm scripts live in (override with PROJECT_ROOT env

@@ -36,6 +36,25 @@ def test_submit_stamps_request_id_as_comment(tmp_path, fake_slurm):
     assert cmd[cmd.index("--comment") + 1] == "match-123"
 
 
+def test_submit_dry_run_exports_none(tmp_path, fake_slurm):
+    config, backend = _backend(tmp_path, fake_slurm)
+    entry = config.policies["molmoact2-droid"]
+    backend.submit(entry, None, enable_action=False)
+    cmd = fake_slurm.submitted[0]
+    assert "--export=NONE" in cmd
+    assert "--export=ENABLE_ACTION=1" not in cmd
+
+
+def test_submit_enable_action_passes_env_flag(tmp_path, fake_slurm):
+    config, backend = _backend(tmp_path, fake_slurm)
+    entry = config.policies["molmoact2-droid"]
+    backend.submit(entry, None, enable_action=True)
+    cmd = fake_slurm.submitted[0]
+    # Only ENABLE_ACTION is exported -- launcher secrets are never propagated.
+    assert "--export=ENABLE_ACTION=1" in cmd
+    assert "--export=NONE" not in cmd
+
+
 def test_submit_failure_raises_sanitized(tmp_path, fake_slurm):
     config, backend = _backend(tmp_path, fake_slurm)
     fake_slurm.sbatch_fails = True

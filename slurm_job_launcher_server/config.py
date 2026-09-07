@@ -40,6 +40,8 @@ class LauncherConfig:
     max_active_jobs: int
     project_root: Path
     ngrok_bin: str
+    # Safety gate: the API may request enable_action only when this is true.
+    allow_enable_action: bool = False
     policies: dict[str, PolicyEntry] = field(default_factory=dict)
 
 
@@ -84,6 +86,8 @@ def load_config(path: str | Path | None = None) -> LauncherConfig:
         or "ngrok"
     )
 
+    allow_enable_action = bool(launcher_raw.get("allow_enable_action", False))
+
     policies_raw = data.get("policies", {}) or {}
     if not policies_raw:
         raise ValueError("config must define at least one policy under 'policies'")
@@ -114,5 +118,6 @@ def load_config(path: str | Path | None = None) -> LauncherConfig:
         max_active_jobs=max_active_jobs,
         project_root=project_root,
         ngrok_bin=ngrok_bin,
+        allow_enable_action=allow_enable_action,
         policies=policies,
     )

@@ -12,6 +12,11 @@ class SubmitJobRequest(BaseModel):
         description="Optional idempotency key. Re-submitting the same non-empty "
         "value returns the existing job instead of creating a duplicate.",
     )
+    enable_action: bool = Field(
+        default=False,
+        description="Send actions to the robot (physical control). Off by default "
+        "(dry-run). Only honored if the launcher config allows it.",
+    )
 
 
 class JobResponse(BaseModel):
@@ -19,6 +24,7 @@ class JobResponse(BaseModel):
     model: str | None
     state: str
     request_id: str | None = None
+    enable_action: bool | None = None
 
 
 class JobSummary(BaseModel):

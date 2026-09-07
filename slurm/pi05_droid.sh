@@ -54,11 +54,20 @@ nvidia-smi --query-gpu=name,memory.total,memory.free --format=csv,noheader,nouni
 #   source /home/n/ntasang/secrets/colosseum.env
 # The file should export COLOSSEUM_ROUTER_URL and COLOSSEUM_TOKEN.
 
-# Dry run by default (no actions sent). Add --enable-action only when you are
-# ready to actually command the robot.
+# Dry run by default (no actions sent). The launcher sets ENABLE_ACTION=1 only
+# when an operator has opted in; otherwise this stays a dry run. You can also
+# export ENABLE_ACTION=1 manually before sbatch.
+# Example: `ENABLE_ACTION=1 sbatch slurm/pi05_droid.sh` to run a real robot session.
+ACTION_ARGS=()
+if [[ "${ENABLE_ACTION:-0}" == "1" ]]; then
+    echo "ACTION SENDING ENABLED (ENABLE_ACTION=1) -- the robot may move."
+    ACTION_ARGS+=(--enable-action)
+fi
+
 python scripts/run_policy.py \
     --policy pi05_droid \
     --config configs/pi05_droid.yaml \
-    --router-config configs/router.yaml
+    --router-config configs/router.yaml \
+    "${ACTION_ARGS[@]}"
 
 echo "Policy worker ended at $(date)"

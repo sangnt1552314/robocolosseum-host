@@ -20,6 +20,42 @@ def test_submit_returns_202_and_job_id(client, fake_slurm):
     assert body["state"] == "PENDING"
 
 
+def test_enable_action_rejected_when_not_allowed(client, fake_slurm):
+    resp = client.post(
+        "/jobs",
+        json={"model": "molmoact2-droid", "enable_action": True},
+        headers=auth_headers(),
+    )
+    assert resp.status_code == 403
+    assert resp.json()["error"] == "action_not_allowed"
+    # nothing was submitted to Slurm
+    assert fake_slurm.submitted == []
+
+
+def test_enable_action_allowed_when_configured(tmp_path, fake_slurm, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from slurm_job_launcher_server.app import create_app
+    from slurm_job_launcher_server.registry import PolicyRegistry
+    from slurm_job_launcher_server.slurm_backend import SlurmBackend
+
+    from .conftest import TOKEN, make_config
+
+    monkeypatch.setenv("LAUNCHER_API_TOKEN", TOKEN)
+    config = make_config(tmp_path, allow_enable_action=True)
+    backend = SlurmBackend(config, PolicyRegistry(config), user="testuser", runner=fake_slurm.run)
+    client = TestClient(create_app(config=config, backend=backend))
+
+    resp = client.post(
+        "/jobs",
+        json={"model": "molmoact2-droid", "enable_action": True},
+        headers=auth_headers(),
+    )
+    assert resp.status_code == 202
+    assert resp.json()["enable_action"] is True
+    assert "--export=ENABLE_ACTION=1" in fake_slurm.submitted[0]
+
+
 def test_multiple_jobs_allowed_below_limits(client):
     for _ in range(3):
         resp = client.post("/jobs", json={"model": "molmoact2-droid"}, headers=auth_headers())

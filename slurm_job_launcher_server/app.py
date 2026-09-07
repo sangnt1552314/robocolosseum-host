@@ -12,6 +12,7 @@ import logging
 import threading
 
 from fastapi import Depends, FastAPI, Request
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 
 from .auth import require_token
@@ -84,6 +85,15 @@ def create_app(
             )
 
         request_id = req.request_id or None
+        enable_action = bool(req.enable_action)
+        # Physical control is a deliberate, operator-gated decision.
+        if enable_action and not config.allow_enable_action:
+            raise APIError(
+                403,
+                "action_not_allowed",
+                "This launcher is configured for dry-run only "
+                "(set launcher.allow_enable_action to permit actions).",
+            )
 
         with admission_lock:
             # 1. Idempotency: return the existing job for a repeated request_id.
@@ -120,7 +130,7 @@ def create_app(
 
             # 4. Submit.
             try:
-                job_id = backend.submit(entry, request_id)
+                job_id = backend.submit(entry, request_id, enable_action=enable_action)
             except SlurmError:
                 raise APIError(502, "slurm_error", "Failed to submit job to Slurm.")
 
@@ -132,6 +142,7 @@ def create_app(
             model=req.model,
             state="PENDING",
             request_id=request_id,
+            enable_action=enable_action,
         )
 
     @app.get("/jobs", response_model=JobListResponse, dependencies=[Depends(require_token)])
@@ -180,6 +191,29 @@ def create_app(
         except SlurmError:
             raise APIError(502, "slurm_error", "Failed to cancel job.")
         return CancelResponse(job_id=job_id, status="cancel_requested")
+
+    # Advertise the registered model names as an enum in /docs so callers see
+    # the allowed values (e.g. molmoact2-droid) instead of a free-text box.
+    def _custom_openapi() -> dict:
+        if app.openapi_schema:
+            return app.openapi_schema
+        schema = get_openapi(
+            title=app.title,
+            version=app.version,
+            description=app.description,
+            routes=app.routes,
+        )
+        try:
+            model_prop = schema["components"]["schemas"]["SubmitJobRequest"][
+                "properties"
+            ]["model"]
+            model_prop["enum"] = registry.available_models()
+        except KeyError:
+            pass
+        app.openapi_schema = schema
+        return schema
+
+    app.openapi = _custom_openapi
 
     return app
 

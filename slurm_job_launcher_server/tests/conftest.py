@@ -17,13 +17,15 @@ from slurm_job_launcher_server.slurm_backend import SlurmBackend
 TOKEN = "test-token-value"
 
 
-def make_config(tmp_path: Path, *, max_active_jobs: int = 10, max_replicas: int = 3) -> LauncherConfig:
+def make_config(tmp_path: Path, *, max_active_jobs: int = 10, max_replicas: int = 3,
+                allow_enable_action: bool = False) -> LauncherConfig:
     return LauncherConfig(
         host="127.0.0.1",
         port=8000,
         max_active_jobs=max_active_jobs,
         project_root=tmp_path,
         ngrok_bin="ngrok",
+        allow_enable_action=allow_enable_action,
         policies={
             "molmoact2-droid": PolicyEntry(
                 model="molmoact2-droid",

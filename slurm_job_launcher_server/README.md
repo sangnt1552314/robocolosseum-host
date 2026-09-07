@@ -242,6 +242,24 @@ curl -X POST \
   "$URL/jobs"
 ```
 
+**Enabling physical actions.** Jobs are **dry-run by default** (actions printed,
+not sent). To command the robot, pass `enable_action: true`:
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer $LAUNCHER_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"molmoact2-droid","enable_action":true}' \
+  "$URL/jobs"
+```
+
+This is honored **only if** the launcher config sets
+`launcher.allow_enable_action: true` — otherwise the request is rejected with
+`403 action_not_allowed`. When enabled, the launcher passes `ENABLE_ACTION=1` to
+the worker (via `sbatch --export`, so launcher secrets are still isolated) and
+the worker script turns it into `run_policy.py --enable-action`. Confirm the
+robot client maps gripper/joint values safely before using this on hardware.
+
 ### List launcher-owned jobs
 
 ```bash
@@ -294,8 +312,9 @@ Franka — that stays with Aaron's routing.
 
 Child GPU jobs run with `sbatch --export=NONE`, so they set up their own env
 (via `slurm/molmoact2.sh`) and never inherit `LAUNCHER_API_TOKEN` or ngrok
-creds. The launcher never modifies `slurm/molmoact2.sh` or appends
-`--enable-action` — the worker keeps its dry-run default.
+creds. Actions are dry-run by default; the worker only sends actions when the
+launcher passes `ENABLE_ACTION=1` (via `--export=ENABLE_ACTION=1`, which still
+excludes launcher secrets), and only when `launcher.allow_enable_action` is set.
 
 ## 12. Stopping the launcher
 
@@ -316,6 +335,7 @@ finish or are cancelled explicitly.
 | `ERR_NGROK_334` (endpoint already online) | Another agent holds the single free domain. Stop it: `scancel` the old launcher job, kill the stray `ngrok` process, or stop it at https://dashboard.ngrok.com/agents. Set `NGROK_API_KEY` (section 4) to have the launcher do this automatically. |
 | API returns `401 unauthorized` | Missing/incorrect `Authorization: Bearer` header, or token mismatch. |
 | `422 unsupported_model` | Model name is not in the `policies` registry. Check spelling (`molmoact2-droid`). |
+| `403 action_not_allowed` | `enable_action: true` was requested but `launcher.allow_enable_action` is `false`. Enable it in config only when safe. |
 | `409 global_limit_reached` | `max_active_jobs` reached. Wait for jobs to finish or raise the limit in config. |
 | `429 model_replica_limit_reached` | That model's `max_replicas` reached. |
 | `502 slurm_error` on submit | `sbatch` failed. Check submit-host Slurm access and `logs/launcher/`. |

@@ -119,9 +119,13 @@ class SlurmBackend:
 
     # -- submit --------------------------------------------------------------
 
-    def submit(self, entry: PolicyEntry, request_id: str | None) -> str:
+    def submit(self, entry: PolicyEntry, request_id: str | None, *, enable_action: bool = False) -> str:
         script = self._registry.resolved_script(entry)
-        cmd = [self._sbatch, "--parsable", "--export=NONE"]
+        # Isolate launcher secrets from the child job. Dry-run exports nothing;
+        # enabling actions passes only ENABLE_ACTION=1 (still no launcher creds),
+        # which the policy script turns into `--enable-action`.
+        export = "--export=ENABLE_ACTION=1" if enable_action else "--export=NONE"
+        cmd = [self._sbatch, "--parsable", export]
         if request_id:
             # Durable, restart-proof idempotency backstop; also lets list/status
             # recover the request id straight from Slurm.
