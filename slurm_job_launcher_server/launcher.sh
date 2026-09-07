@@ -100,6 +100,47 @@ NGROK_LOG="./logs/launcher/ngrok-${SLURM_JOB_ID}.log"
 NGROK_MAX_ATTEMPTS="${NGROK_MAX_ATTEMPTS:-8}"
 NGROK_RETRY_DELAY="${NGROK_RETRY_DELAY:-20}"
 
+# Optionally end an orphaned agent that still holds the single free domain.
+# Requires an ngrok API key (https://dashboard.ngrok.com/api-keys) in
+# NGROK_API_KEY -- separate from the agent authtoken. Best-effort: any failure
+# is logged and ignored, since the retry loop below still covers the conflict.
+stop_existing_ngrok_sessions() {
+    [[ -z "${NGROK_API_KEY:-}" ]] && return 0
+    echo "NGROK_API_KEY set: stopping any existing ngrok tunnel sessions first..."
+    NGROK_API_KEY="${NGROK_API_KEY}" python - <<'PY' || echo "Could not stop existing sessions (continuing; retry loop will handle it)." >&2
+import json, os, urllib.request
+
+KEY = os.environ["NGROK_API_KEY"]
+BASE = "https://api.ngrok.com"
+HDRS = {"Authorization": f"Bearer {KEY}", "Ngrok-Version": "2"}
+
+
+def call(method, path):
+    req = urllib.request.Request(BASE + path, method=method, headers=HDRS)
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        body = resp.read()
+        return json.loads(body) if body else {}
+
+
+sessions = call("GET", "/tunnel_sessions").get("tunnel_sessions", [])
+if not sessions:
+    print("No existing tunnel sessions.")
+for s in sessions:
+    sid = s.get("id")
+    if not sid:
+        continue
+    try:
+        call("POST", f"/tunnel_sessions/{sid}/stop")
+        print(f"Stopped tunnel session {sid}.")
+    except Exception as exc:  # noqa: BLE001 - best-effort cleanup
+        print(f"Failed to stop session {sid}: {exc.__class__.__name__}")
+PY
+    # Give ngrok's edge a moment to release the endpoint.
+    sleep 5
+}
+
+stop_existing_ngrok_sessions
+
 get_ngrok_url() {
     curl -s "${NGROK_API}" \
         | python -c 'import sys,json;

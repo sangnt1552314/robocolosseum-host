@@ -97,6 +97,33 @@ machine/account.
 > **Never commit the ngrok authtoken or `ngrok.yml`.** It grants access to your
 > ngrok account.
 
+### Optional: auto-freeing the domain (ERR_NGROK_334)
+
+The free ngrok plan gives your account **one** static domain, and only one
+agent can hold it at a time. If a previous launcher crashed (e.g. `SIGKILL`, so
+its cleanup trap never ran), its agent may still hold the domain and a new
+launcher fails with `ERR_NGROK_334`.
+
+`launcher.sh` already retries past a briefly-lingering session and refuses to
+start if another `colosseum-launcher` Slurm job is running. To also stop a
+truly orphaned agent automatically, give the launcher an **ngrok API key**
+(create one at https://dashboard.ngrok.com/api-keys — this is *separate* from
+the agent authtoken):
+
+```bash
+# add to slurm_job_launcher_server/.env (git-ignored) or export before sbatch
+export NGROK_API_KEY='<your-ngrok-api-key>'
+```
+
+When `NGROK_API_KEY` is set, the launcher stops any existing ngrok tunnel
+sessions on the account before starting its own. This step is best-effort: if
+it fails, the retry loop still runs. Without a key, clear a stuck endpoint
+manually from https://dashboard.ngrok.com/agents (or kill the stray `ngrok`
+process).
+
+> Treat `NGROK_API_KEY` like a secret: never commit, print, or log it. `.env`
+> is git-ignored.
+
 ## 5. Launcher API authentication
 
 Every endpoint (including `/health`) requires:
@@ -317,6 +344,7 @@ running under Slurm until they finish or are cancelled explicitly.
 | --- | --- |
 | Launcher job exits immediately | `LAUNCHER_API_TOKEN` not exported before `sbatch`, or ngrok binary not found/executable. Check `logs/launcher/slurm-<id>.err`. |
 | No public URL in the log | ngrok could not authenticate/connect. Run `ngrok config add-authtoken ...`, then check `logs/launcher/ngrok-<id>.log`. |
+| `ERR_NGROK_334` (endpoint already online) | Another agent holds the single free domain. Stop it: `scancel` the old launcher job, kill the stray `ngrok` process, or stop it at https://dashboard.ngrok.com/agents. Set `NGROK_API_KEY` (section 4) to have the launcher do this automatically. |
 | API returns `401 unauthorized` | Missing/incorrect `Authorization: Bearer` header, or token mismatch. |
 | `422 unsupported_model` | Model name is not in the `policies` registry. Check spelling (`molmoact2-droid`). |
 | `409 global_limit_reached` | `max_active_jobs` reached. Wait for jobs to finish or raise the limit in config. |
