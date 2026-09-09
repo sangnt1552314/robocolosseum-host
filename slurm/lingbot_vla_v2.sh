@@ -15,7 +15,7 @@
 # released immediately -- it does not run for the full walltime.
 # ---------------------------------------------------------------------------
 
-ENV_NAME="lingbot"
+ENV_NAME="py312"
 HOME_PATH="/home/n/ntasang"
 PROJECT_PATH="${HOME_PATH}/projects/robocolosseum-host"
 
