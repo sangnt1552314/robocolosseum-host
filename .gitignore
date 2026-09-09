@@ -224,6 +224,8 @@ __marimo__/
 *.log
 *.o[0-9]*
 *.e[0-9]*
+logs/
+debug_images/
 
 # Configs - Ignore all YAML in configs except example templates
 configs/*.yaml
