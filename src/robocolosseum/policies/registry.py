@@ -18,6 +18,9 @@ from .base import BasePolicyAdapter
 POLICY_REGISTRY: dict[str, str] = {
     "molmoact2": "robocolosseum.policies.molmoact2:MolmoAct2Adapter",
     "pi05_droid": "robocolosseum.policies.pi05_droid:Pi05Adapter",
+    "gr00t_n17_droid": "robocolosseum.policies.gr00t_n17_droid:GR00TN17DroidAdapter",
+    "lingbot_vla_v2": "robocolosseum.policies.lingbot_vla_v2:LingbotVLAv2Adapter",
+    "galaxea_g05": "robocolosseum.policies.galaxea_g05:GalaxeaG05Adapter",
 }
 
 

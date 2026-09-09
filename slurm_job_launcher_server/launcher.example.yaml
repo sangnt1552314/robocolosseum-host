@@ -27,3 +27,15 @@ policies:
     script: slurm/pi05_droid.sh
     slurm_job_name: colosseum-pi05
     max_replicas: 3
+  gr00t-n17-droid:
+    script: slurm/gr00t_n17_droid.sh
+    slurm_job_name: colosseum-gr00t
+    max_replicas: 3
+  lingbot-vla-v2:
+    script: slurm/lingbot_vla_v2.sh
+    slurm_job_name: colosseum-lingbot
+    max_replicas: 3
+  galaxea-g05:
+    script: slurm/galaxea_g05.sh
+    slurm_job_name: colosseum-g05
+    max_replicas: 3

@@ -1,0 +1,40 @@
+policy:
+  name: gr00t_n17_droid
+  checkpoint: nvidia/GR00T-N1.7-DROID
+  # GR00T manages precision internally; dtype here is informational only.
+  dtype: bfloat16
+  device: cuda
+  # Adapter-specific options.
+  #
+  # Embodiment tag selects the DROID modality config (state/action keys,
+  # normalisation). VERIFY it matches the checkpoint.
+  embodiment_tag: OXE_DROID_RELATIVE_EEF_RELATIVE_JOINT
+  # Nested-observation video keys for the DROID modality config. The exterior
+  # slot feeds exterior_image_1_left, the wrist feeds wrist_image_left.
+  video_keys:
+    exterior: exterior_image_1_left
+    wrist: wrist_image_left
+  # State streams built from the live observation (DROID also defines eef_9d,
+  # dropped here because the Colosseum observation exposes joints + gripper).
+  joint_state_key: joint_position
+  gripper_state_key: gripper_position
+  language_key: annotation.language.language_instruction
+  # Action streams concatenated (in order) into the emitted chunk. Default gives
+  # 7 relative joints + 1 gripper = 8 dims. NOTE: DROID joint_position is a
+  # RELATIVE joint action -- confirm the robot side integrates it correctly.
+  action_keys: [joint_position, gripper_position]
+
+# Map the Colosseum observation fields to the exterior / wrist camera slots.
+# VERIFY against a real observation using scripts/test_router_readonly.py.
+camera_mapping:
+  external: left_image
+  wrist: right_image
+
+runtime:
+  # walltime in SLURM/PBS is only a safety cap. These timeouts decide how
+  # quickly the worker exits (and releases the GPU) once things go quiet.
+  startup_timeout_seconds: 600   # wait this long for the first session
+  idle_timeout_seconds: 600      # exit if no observation arrives for this long
+  action_spaces: [joint_position]
+  control_hz: 15
+  max_horizon: 16

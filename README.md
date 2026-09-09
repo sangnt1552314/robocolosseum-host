@@ -2,8 +2,9 @@
 
 Modular **policy hosting** for the FrodoBots Colosseum. The contractor runs
 routing, matchmaking and scoring; **we host only policy inference** as a GPU job
-(PBS on NUS Hopper, SLURM on NUS SoC). Supported: `allenai/MolmoAct2-DROID` and
-`lerobot/pi05_droid`.
+(PBS on NUS Hopper, SLURM on NUS SoC). Supported: `allenai/MolmoAct2-DROID`,
+`lerobot/pi05_droid`, `nvidia/GR00T-N1.7-DROID`, `Robbyant/lingbot-vla-v2` and
+`OpenGalaxea/G05`.
 
 ## Architecture
 
@@ -54,7 +55,10 @@ model's environment and run directly.
 
 2. **Model deps** — MolmoAct2: `pip install torch transformers pillow numpy pyyaml`
    (add `opencv-python` only if the router streams JPEG/PNG). pi05_droid:
-   `pip install lerobot`.
+   `pip install lerobot`. GR00T-N1.7-DROID: install the Isaac-GR00T `gr00t`
+   package (gated `nvidia/Cosmos-Reason2-2B` backbone — authenticate first).
+   lingbot-vla-v2: `pip install torch transformers` (gated repo). Galaxea G05:
+   install the GalaxeaVLA `g05` package and download the `g05-droid` checkpoint.
 
 3. **Use the existing HF cache** (checkpoint already on Hopper):
 
@@ -160,6 +164,13 @@ do **not** need to change. To add e.g. `OpenGalaxea/G05`, `lerobot/pi05_droid`,
    }
    ```
    (Adapters are imported lazily, so each model can keep its own environment.)
+   Already wired this way: `gr00t_n17_droid`
+   (`robocolosseum.policies.gr00t_n17_droid:GR00TN17DroidAdapter`),
+   `lingbot_vla_v2` (`...lingbot_vla_v2:LingbotVLAv2Adapter`) and `galaxea_g05`
+   (`...galaxea_g05:GalaxeaG05Adapter`), each with a
+   `configs/<name>.example.yaml`, a `slurm/<name>.sh`, and a launcher entry.
+   Their model-specific call surface is driven by `policy.options` and marked
+   **VERIFY** — confirm it against the installed package/checkpoint.
 3. Add `configs/my_policy.yaml`.
 4. Add a submission script that activates that model's environment and runs
    `scripts/run_policy.py --policy my_policy`:

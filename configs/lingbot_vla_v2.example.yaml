@@ -1,0 +1,34 @@
+policy:
+  name: lingbot_vla_v2
+  checkpoint: Robbyant/lingbot-vla-v2
+  dtype: bfloat16          # bfloat16 or float32
+  device: cuda
+  # Adapter-specific options. This checkpoint is gated and its inference API is
+  # not publicly documented -- VERIFY every value below against the checkpoint's
+  # model card / modeling_*.py before trusting the output.
+  #
+  # Inference method exposed by the model class (called as
+  # model.<predict_method>(processor=, images=, task=, state=, **predict_kwargs)).
+  predict_method: predict_action
+  # Duplicate the exterior frame into a second exterior slot to match a DROID
+  # [exterior_1, exterior_2, wrist] training layout. Leave false for [ext, wrist].
+  duplicate_exterior: false
+  # Extra keyword arguments forwarded verbatim to the inference method.
+  predict_kwargs: {}
+  # Keep only the real DROID action dims (7 joints + 1 gripper). null disables.
+  action_dim: 8
+
+# Map the Colosseum observation fields to the exterior / wrist camera slots.
+# VERIFY against a real observation using scripts/test_router_readonly.py.
+camera_mapping:
+  external: left_image
+  wrist: right_image
+
+runtime:
+  # walltime in SLURM/PBS is only a safety cap. These timeouts decide how
+  # quickly the worker exits (and releases the GPU) once things go quiet.
+  startup_timeout_seconds: 600   # wait this long for the first session
+  idle_timeout_seconds: 600      # exit if no observation arrives for this long
+  action_spaces: [joint_position]
+  control_hz: 15
+  max_horizon: 16

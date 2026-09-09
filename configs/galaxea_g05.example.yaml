@@ -1,0 +1,45 @@
+policy:
+  name: galaxea_g05
+  # Local path to the downloaded g05-droid checkpoint directory (from
+  # `huggingface-cli download OpenGalaxea/G05 --local-dir checkpoints`). The
+  # sidecar .hydra/config.yaml and dataset_stats.json must sit next to it.
+  checkpoint: checkpoints/g05-droid/checkpoints/model_state_dict.pt
+  dtype: bfloat16
+  device: cuda
+  # Adapter-specific options. G0.5 is normally served through the repo's policy
+  # server; this adapter builds it in-process. VERIFY every value below against
+  # the installed GalaxeaVLA (g05) version before trusting the output.
+  #
+  # In-process policy factory: "module.path:callable". REQUIRED -- set it to the
+  # builder used by GalaxeaVLA scripts/serve_policy.py. Called as
+  #   build(ckpt_path=, device=, action_steps=, embodiment=, **builder_kwargs)
+  builder: null
+  # Inference entrypoint on the built policy (called as policy.<infer_method>(obs)).
+  infer_method: infer
+  # Embodiment/config selector passed to the builder (DROID/Franka).
+  embodiment: galaxea_droid
+  action_steps: 16
+  builder_kwargs: {}
+  # Observation dict keys expected by the g05 DROID policy.
+  image_keys:
+    exterior: exterior_image
+    wrist: wrist_image
+  state_key: state
+  task_key: instruction
+  # DROID: 7 joints + 1 gripper. null disables slicing.
+  action_dim: 8
+
+# Map the Colosseum observation fields to the exterior / wrist camera slots.
+# VERIFY against a real observation using scripts/test_router_readonly.py.
+camera_mapping:
+  external: left_image
+  wrist: right_image
+
+runtime:
+  # walltime in SLURM/PBS is only a safety cap. These timeouts decide how
+  # quickly the worker exits (and releases the GPU) once things go quiet.
+  startup_timeout_seconds: 600   # wait this long for the first session
+  idle_timeout_seconds: 600      # exit if no observation arrives for this long
+  action_spaces: [joint_position]
+  control_hz: 15
+  max_horizon: 16
