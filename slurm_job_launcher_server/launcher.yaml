@@ -1,11 +1,28 @@
 launcher:
   host: 127.0.0.1
   port: 8000
-  max_active_jobs: 10
-  ngrok_bin: 
+  max_active_jobs: 100
+  allow_enable_action: true
+  ngrok_bin: ~/bin/ngrok
 
 policies:
   molmoact2-droid:
     script: slurm/molmoact2.sh
     slurm_job_name: colosseum-molmo
+    max_replicas: 50
+  pi05-droid:
+    script: slurm/pi05_droid.sh
+    slurm_job_name: colosseum-pi05
+    max_replicas: 50
+  gr00t-n17-droid:
+    script: slurm/gr00t_n17_droid.sh
+    slurm_job_name: colosseum-gr00t
+    max_replicas: 3
+  lingbot-vla-v2:
+    script: slurm/lingbot_vla_v2.sh
+    slurm_job_name: colosseum-lingbot
+    max_replicas: 3
+  galaxea-g05:
+    script: slurm/galaxea_g05.sh
+    slurm_job_name: colosseum-g05
     max_replicas: 3
