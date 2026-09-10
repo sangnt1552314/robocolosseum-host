@@ -1,33 +1,32 @@
 policy:
   name: galaxea_g05
-  # Local path to the downloaded g05-droid checkpoint directory (from
-  # `huggingface-cli download OpenGalaxea/G05 --local-dir checkpoints`). The
-  # sidecar .hydra/config.yaml and dataset_stats.json must sit next to it.
-  checkpoint: checkpoints/g05-droid/checkpoints/model_state_dict.pt
-  dtype: bfloat16
-  device: cuda
-  # Adapter-specific options. G0.5 is normally served through the repo's policy
-  # server; this adapter builds it in-process. VERIFY every value below against
-  # the installed GalaxeaVLA (g05) version before trusting the output.
+  # Path to the g05-droid checkpoint FILE (model_state_dict.pt). Its dir must
+  # also contain .hydra/config.yaml and dataset_stats.json (standard g05 layout).
+  # Download: huggingface-cli download OpenGalaxea/G05 --local-dir <g05_repo>/checkpoints
+  checkpoint: /home/n/ntasang/repos/GalaxeaVLA/checkpoints/g05-droid/checkpoints/model_state_dict.pt
+  dtype: bfloat16          # informational; precision handled by the g05 config
+  device: cuda             # G0.5 inference runs on CUDA
+  # Adapter-specific options.
   #
-  # In-process policy factory: "module.path:callable". REQUIRED -- set it to the
-  # builder used by GalaxeaVLA scripts/serve_policy.py. Called as
-  #   build(ckpt_path=, device=, action_steps=, embodiment=, **builder_kwargs)
-  builder: null
-  # Inference entrypoint on the built policy (called as policy.<infer_method>(obs)).
-  infer_method: infer
-  # Embodiment/config selector passed to the builder (DROID/Franka).
-  embodiment: galaxea_droid
-  action_steps: 16
-  builder_kwargs: {}
-  # Observation dict keys expected by the g05 DROID policy.
-  image_keys:
-    exterior: exterior_image
-    wrist: wrist_image
-  state_key: state
-  task_key: instruction
-  # DROID: 7 joints + 1 gripper. null disables slicing.
-  action_dim: 8
+  # Cloned https://github.com/OpenGalaxea/GalaxeaVLA checkout (src-layout `g05`
+  # package; shared resources under <repo>/checkpoints). Install its uv .venv.
+  g05_repo: /home/n/ntasang/repos/GalaxeaVLA
+  # Embodiment selector (Hydra eval_embodiment). DROID = Droid_Franka.
+  eval_embodiment: Droid_Franka
+  # Extra Hydra overrides. The g05-droid checkpoint is the discrete/CoT variant:
+  overrides:
+    - model.model_arch.discrete_action=true
+    - model.model_arch.continuous_action=false
+  # frequency: 15         # control Hz sent to the model (defaults to runtime.control_hz)
+  #
+  # Colosseum -> G0.5 raw-observation mapping. Keys MUST match the processor's
+  # shape_meta (image/state keys are logged at load). Values are Colosseum
+  # sources: "external"/"wrist" resolve via camera_mapping, else a literal
+  # observation.state attribute; state sources also accept "joints"/"gripper" or
+  # a list to concatenate. VERIFY the exact keys against the load-time log.
+  image_features: {}       # e.g. {exterior_image_1_left: external, wrist_image_left: wrist}
+  state_features: {}       # e.g. {joint_position: joints, gripper_position: gripper}
+  # action_keys: [right_arm, right_gripper]   # order to concat; null = all predicted parts
 
 # Map the Colosseum observation fields to the exterior / wrist camera slots.
 # VERIFY against a real observation using scripts/test_router_readonly.py.
