@@ -15,8 +15,9 @@
 # released immediately -- it does not run for the full walltime.
 # ---------------------------------------------------------------------------
 
-ENV_NAME="venvs/g05"
+CONDA_ENV="g05"
 HOME_PATH="/home/n/ntasang"
+CONDA_PATH="${HOME_PATH}/miniconda3"
 PROJECT_PATH="${HOME_PATH}/projects/robocolosseum-host"
 
 cd "${PROJECT_PATH}" || exit 1
@@ -24,8 +25,9 @@ cd "${PROJECT_PATH}" || exit 1
 LOG_DIR="./logs/galaxea_g05"
 mkdir -p "${LOG_DIR}"
 
-# Activate the model's virtualenv (needs the GalaxeaVLA `g05` package on PATH).
-source "${HOME_PATH}/${ENV_NAME}/bin/activate"
+# Activate the model's conda env (needs the GalaxeaVLA `g05` package on PATH).
+source "${CONDA_PATH}/etc/profile.d/conda.sh"
+conda activate "${CONDA_ENV}"
 
 # The g05-droid checkpoint is downloaded locally (see config `checkpoint`);
 # HF cache is still used for the Qwen3.5 backbone / processor snapshots.
