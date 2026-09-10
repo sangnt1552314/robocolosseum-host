@@ -47,7 +47,7 @@ class MolmoAct2Adapter(BasePolicyAdapter):
 
         log.info("Loading checkpoint from cache: %s", self.policy.checkpoint)
         self.processor = AutoProcessor.from_pretrained(
-            self.policy.checkpoint, trust_remote_code=True
+            self.policy.checkpoint, trust_remote_code=True,extra_special_tokens={},
         )
         self.model = (
             AutoModelForImageTextToText.from_pretrained(
