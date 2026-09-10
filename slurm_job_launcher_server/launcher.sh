@@ -20,7 +20,7 @@
 
 set -u
 
-ENV_NAME="py312"
+ENV_NAME="venvs/py312"
 HOME_PATH="/home/n/ntasang"
 PROJECT_PATH="${PROJECT_ROOT:-${HOME_PATH}/projects/robocolosseum-host}"
 
