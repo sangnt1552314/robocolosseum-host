@@ -1,6 +1,6 @@
 policy:
   name: lingbot_vla_v2
-  checkpoint: Robbyant/lingbot-vla-v2
+  checkpoint: robbyant/lingbot-vla-v2-6b
   dtype: bfloat16          # bfloat16 or float32
   device: cuda
   # Adapter-specific options. This checkpoint is gated and its inference API is
