@@ -1,0 +1,45 @@
+#!/bin/bash
+#PBS -P CFP05-CF-002
+#PBS -j oe
+#PBS -k oed
+#PBS -N pbsri-launcher
+#PBS -q auto
+#PBS -l select=1:ncpus=2
+#PBS -l walltime=12:00:00
+
+# ---------------------------------------------------------------------------
+# Lightweight CPU launcher API (control plane only). It submits/queries/cancels
+# the GPU worker jobs; it never touches observations, images or actions.
+#
+# You can equally run this on the login node or any small persistent host:
+#   LAUNCHER_API_TOKEN=... uvicorn pbs_remote_inference.launcher_server.app:app \
+#       --host 127.0.0.1 --port 8000
+# then expose it with `ngrok http 8000`.
+#
+# LAUNCHER_API_TOKEN must be set in the environment (never commit it):
+#   qsub -v LAUNCHER_API_TOKEN pbs_remote_inference/pbs/launcher.pbs
+# ---------------------------------------------------------------------------
+
+cd $PBS_O_WORKDIR
+
+if [ -z "$LAUNCHER_API_TOKEN" ]; then
+    echo "ERROR: LAUNCHER_API_TOKEN must be set." >&2
+    exit 1
+fi
+
+LOG_DIR='./logs/pbs_remote_inference/launcher'
+mkdir -p $LOG_DIR
+
+if [ -d "/scratch/e1583535/virtualenvs/robocolosseum" ]; then
+    source /scratch/e1583535/virtualenvs/robocolosseum/bin/activate
+fi
+
+echo "Starting launcher API at $(date) on host $(hostname)"
+
+# Bind to all interfaces so it can be reached (protect it with ngrok + token).
+LAUNCHER_API_TOKEN="$LAUNCHER_API_TOKEN" \
+python -m uvicorn pbs_remote_inference.launcher_server.app:app \
+    --host 0.0.0.0 --port 8000 \
+    > $LOG_DIR/stdout.$PBS_JOBID.log 2> $LOG_DIR/stderr.$PBS_JOBID.log
+
+echo "Launcher API ended at $(date)"

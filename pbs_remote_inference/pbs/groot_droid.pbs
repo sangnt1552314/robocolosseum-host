@@ -1,0 +1,55 @@
+#!/bin/bash
+#PBS -P CFP05-CF-002
+#PBS -j oe
+#PBS -k oed
+#PBS -N pbsri-groot
+#PBS -q auto
+#PBS -l select=1:ngpus=1
+#PBS -l walltime=02:00:00
+
+# GPU inference WORKER for groot-droid. See molmoact2_droid.pbs for full notes.
+
+cd $PBS_O_WORKDIR
+
+if [ -z "$SESSION_ID" ] || [ -z "$MODEL" ] || [ -z "$CALLBACK_URL" ] || [ -z "$CALLBACK_TOKEN" ]; then
+    echo "ERROR: SESSION_ID, MODEL, CALLBACK_URL and CALLBACK_TOKEN must be set." >&2
+    exit 1
+fi
+
+image="/app1/common/singularity-img/hopper/pytorch/pytorch_2.6.0_cuda_12.8.sif"
+
+module load singularity
+
+LOG_DIR='./logs/pbs_remote_inference/groot_droid'
+mkdir -p $LOG_DIR
+
+singularity exec -e --nv \
+--env HF_HOME=/scratch/e1583535/cache \
+--env HF_HUB_OFFLINE=1 \
+--env TMPDIR=/scratch/e1583535/tmp \
+--env TEMP=/scratch/e1583535/tmp \
+--env TMP=/scratch/e1583535/tmp \
+--env SESSION_ID="$SESSION_ID" \
+--env MODEL="$MODEL" \
+--env CALLBACK_URL="$CALLBACK_URL" \
+--env CALLBACK_TOKEN="$CALLBACK_TOKEN" \
+$image bash << 'EOF' > $LOG_DIR/stdout.$PBS_JOBID.log 2> $LOG_DIR/stderr.$PBS_JOBID.log
+
+mkdir -p /scratch/e1583535/tmp
+
+if [ -d "/scratch/e1583535/virtualenvs/robocolosseum" ]; then
+    source /scratch/e1583535/virtualenvs/robocolosseum/bin/activate
+fi
+
+echo "Starting inference worker at $(date) on host $(hostname)"
+nvidia-smi --query-gpu=name,memory.total,memory.free --format=csv,noheader,nounits || echo "No GPU detected"
+
+python pbs_remote_inference/worker/run_worker.py \
+    --model "$MODEL" \
+    --server "$CALLBACK_URL" \
+    --token "$CALLBACK_TOKEN" \
+    --session-id "$SESSION_ID" \
+    --config configs/gr00t_n17_droid.yaml
+
+echo "Inference worker ended at $(date)"
+EOF

@@ -1,0 +1,14 @@
+# Networking + launcher deps for the pbs_remote_inference workflow.
+# Model dependencies (torch, transformers, lerobot, gr00t, ...) come from each
+# policy's own environment and are intentionally NOT listed here.
+
+# Launcher API (control plane, CPU host):
+fastapi>=0.110
+uvicorn>=0.29
+pydantic>=2.5
+
+# Data plane (local server + GPU worker):
+websockets>=13.0
+httpx>=0.27
+numpy>=1.24
+pillow>=10.0
