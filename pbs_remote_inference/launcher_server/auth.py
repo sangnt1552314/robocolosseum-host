@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import secrets
+from typing import Optional
 
 from fastapi import Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -23,7 +24,7 @@ bearer_scheme = HTTPBearer(
 
 
 async def require_token(
-    credentials: HTTPAuthorizationCredentials | None = Security(bearer_scheme),
+    credentials: Optional[HTTPAuthorizationCredentials] = Security(bearer_scheme),
 ) -> None:
     expected = os.environ.get(_ENV_VAR)
     if not expected:

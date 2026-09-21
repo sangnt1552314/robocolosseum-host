@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import base64
 import io
-from typing import Annotated, Any, Literal, Union
+from typing import Annotated, Any, Literal, Optional, Union
 
 import numpy as np
 from PIL import Image, UnidentifiedImageError
@@ -86,7 +86,7 @@ class Action(_Msg):
 
 class WorkerError(_Msg):
     type: Literal["error"] = "error"
-    request_id: str | None = None
+    request_id: Optional[str] = None
     message: str = Field(max_length=2048)
 
 
