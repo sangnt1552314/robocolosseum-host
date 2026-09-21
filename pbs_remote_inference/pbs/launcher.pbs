@@ -16,14 +16,23 @@
 #       --host 127.0.0.1 --port 8000
 # then expose it with `ngrok http 8000`.
 #
-# LAUNCHER_API_TOKEN must be set in the environment (never commit it):
-#   qsub -v LAUNCHER_API_TOKEN pbs_remote_inference/pbs/launcher.pbs
+# Secrets are read from pbs_remote_inference/.env (git-ignored), e.g.:
+#   LAUNCHER_API_TOKEN=...
+#   NGROK_AUTHTOKEN=...
 # ---------------------------------------------------------------------------
 
 cd $PBS_O_WORKDIR
 
+# Load LAUNCHER_API_TOKEN and NGROK_AUTHTOKEN from the git-ignored .env.
+ENV_FILE="$PBS_O_WORKDIR/pbs_remote_inference/.env"
+if [ -f "$ENV_FILE" ]; then
+    set -a
+    source "$ENV_FILE"
+    set +a
+fi
+
 if [ -z "$LAUNCHER_API_TOKEN" ]; then
-    echo "ERROR: LAUNCHER_API_TOKEN must be set." >&2
+    echo "ERROR: LAUNCHER_API_TOKEN must be set in $ENV_FILE." >&2
     exit 1
 fi
 
@@ -35,6 +44,30 @@ if [ -d "/scratch/e1583535/virtualenvs/robocolosseum" ]; then
 fi
 
 echo "Starting launcher API at $(date) on host $(hostname)"
+
+# Expose the API with ngrok (background); its public URL is in the ngrok log.
+if [ -n "$NGROK_AUTHTOKEN" ]; then
+    # Free the reserved domain first: kill any local agent AND delete orphaned
+    # cloud endpoints (free tier allows one live session -> ERR_NGROK_334).
+    pkill -f "ngrok http 8000" 2>/dev/null && sleep 1
+    if [ -n "$NGROK_API_KEY" ]; then
+        curl -s https://api.ngrok.com/endpoints \
+            -H "Authorization: Bearer $NGROK_API_KEY" -H "ngrok-version: 2" \
+        | python3 -c "import sys,json;[print(e['id']) for e in json.load(sys.stdin).get('endpoints',[])]" \
+        | while read -r ep; do
+            curl -s -X DELETE "https://api.ngrok.com/endpoints/$ep" \
+                -H "Authorization: Bearer $NGROK_API_KEY" -H "ngrok-version: 2" >/dev/null \
+                && echo "stopped stale ngrok endpoint $ep"
+        done
+    fi
+    NGROK_AUTHTOKEN="$NGROK_AUTHTOKEN" ngrok http 8000 --log=stdout \
+        > "$LOG_DIR/ngrok.$PBS_JOBID.log" 2>&1 &
+    NGROK_PID=$!
+    trap 'kill "$NGROK_PID" 2>/dev/null' EXIT
+    echo "ngrok started (pid $NGROK_PID); public URL in $LOG_DIR/ngrok.$PBS_JOBID.log"
+else
+    echo "WARNING: NGROK_AUTHTOKEN not set in .env; launcher will not be publicly reachable."
+fi
 
 # Bind to all interfaces so it can be reached (protect it with ngrok + token).
 LAUNCHER_API_TOKEN="$LAUNCHER_API_TOKEN" \
