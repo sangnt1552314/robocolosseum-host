@@ -21,40 +21,40 @@ class ModelSpec:
 
 
 MODELS: dict[str, ModelSpec] = {
-    "molmoact2-droid": ModelSpec(
-        "molmoact2-droid",
+    "molmoact2": ModelSpec(
+        "molmoact2",
         policy="molmoact2",
-        script="pbs_remote_inference/pbs/molmoact2_droid.pbs",
+        script="pbs_remote_inference/pbs/molmoact2.pbs",
         job_name="pbsri-molmoact2",
-        config="configs/molmoact2.yaml",
+        config="pbs_remote_inference/configs/so101/stack_white_bowls_100episodes/molmoact2.yaml",
     ),
-    "pi05-droid": ModelSpec(
-        "pi05-droid",
-        policy="pi05_droid",
-        script="pbs_remote_inference/pbs/pi05_droid.pbs",
+    "pi05": ModelSpec(
+        "pi05",
+        policy="pi05",
+        script="pbs_remote_inference/pbs/pi05.pbs",
         job_name="pbsri-pi05",
-        config="configs/pi05_droid.yaml",
+        config="pbs_remote_inference/configs/so101/stack_white_bowls_100episodes/pi05.yaml",
     ),
-    "groot-droid": ModelSpec(
-        "groot-droid",
-        policy="gr00t_n17_droid",
-        script="pbs_remote_inference/pbs/groot_droid.pbs",
+    "groot": ModelSpec(
+        "groot",
+        policy="gr00t_n17",
+        script="pbs_remote_inference/pbs/groot.pbs",
         job_name="pbsri-groot",
-        config="configs/gr00t_n17_droid.yaml",
+        config="pbs_remote_inference/configs/so101/stack_white_bowls_100episodes/gr00t_n17.yaml",
     ),
-    "g05-droid": ModelSpec(
-        "g05-droid",
+    "g05": ModelSpec(
+        "g05",
         policy="galaxea_g05",
-        script="pbs_remote_inference/pbs/g05_droid.pbs",
+        script="pbs_remote_inference/pbs/g05.pbs",
         job_name="pbsri-g05",
-        config="configs/galaxea_g05.yaml",
+        config="pbs_remote_inference/configs/so101/stack_white_bowls_100episodes/galaxea_g05.yaml",
     ),
     "lingbot": ModelSpec(
         "lingbot",
         policy="lingbot_vla_v2",
         script="pbs_remote_inference/pbs/lingbot.pbs",
         job_name="pbsri-lingbot",
-        config="configs/lingbot_vla_v2.yaml",
+        config="pbs_remote_inference/configs/so101/stack_white_bowls_100episodes/lingbot_vla_v2.yaml",
     ),
 }
 

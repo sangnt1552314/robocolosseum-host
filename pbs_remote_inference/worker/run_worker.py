@@ -32,7 +32,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--model",
         default=os.environ.get("MODEL", ""),
-        help="Public model name (e.g. molmoact2-droid) or 'dummy'.",
+        help="Public model name (e.g. molmoact2) or 'dummy'.",
     )
     parser.add_argument(
         "--server",

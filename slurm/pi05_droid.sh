@@ -65,8 +65,8 @@ if [[ "${ENABLE_ACTION:-0}" == "1" ]]; then
 fi
 
 python scripts/run_policy.py \
-    --policy pi05_droid \
-    --config configs/pi05_droid.yaml \
+    --policy pi05 \
+    --config configs/pi05.yaml \
     --router-config configs/router.yaml \
     "${ACTION_ARGS[@]}"
 

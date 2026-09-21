@@ -67,8 +67,8 @@ if [[ "${ENABLE_ACTION:-0}" == "1" ]]; then
 fi
 
 python scripts/run_policy.py \
-    --policy gr00t_n17_droid \
-    --config configs/gr00t_n17_droid.yaml \
+    --policy gr00t_n17 \
+    --config configs/gr00t_n17.yaml \
     --router-config configs/router.yaml \
     "${ACTION_ARGS[@]}"
 

@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class SubmitJobRequest(BaseModel):
-    model: str = Field(..., description="Registered public model name, e.g. 'molmoact2-droid'.")
+    model: str = Field(..., description="Registered public model name, e.g. 'molmoact2'.")
     callback_url: str = Field(
         ..., description="wss:// URL of the user's local worker endpoint (via ngrok)."
     )

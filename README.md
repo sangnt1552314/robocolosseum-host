@@ -54,7 +54,7 @@ model's environment and run directly.
    ```
 
 2. **Model deps** — MolmoAct2: `pip install torch transformers pillow numpy pyyaml`
-   (add `opencv-python` only if the router streams JPEG/PNG). pi05_droid:
+   (add `opencv-python` only if the router streams JPEG/PNG). pi05:
    `pip install lerobot`. GR00T-N1.7-DROID: install the Isaac-GR00T `gr00t`
    package (gated `nvidia/Cosmos-Reason2-2B` backbone — authenticate first).
    lingbot-vla-v2: `pip install torch transformers` (gated repo). Galaxea G05:
@@ -78,7 +78,7 @@ model's environment and run directly.
    `chmod 600`) and pass `--router-config configs/router.yaml`.
 
 5. **Policy config**: `cp configs/molmoact2.example.yaml configs/molmoact2.yaml`
-   (or `configs/pi05_droid.example.yaml`).
+   (or `configs/pi05.example.yaml`).
 
 ## Running the milestone tests (in order)
 
@@ -164,8 +164,8 @@ do **not** need to change. To add e.g. `OpenGalaxea/G05`, `lerobot/pi05_droid`,
    }
    ```
    (Adapters are imported lazily, so each model can keep its own environment.)
-   Already wired this way: `gr00t_n17_droid`
-   (`robocolosseum.policies.gr00t_n17_droid:GR00TN17DroidAdapter`),
+   Already wired this way: `gr00t_n17`
+   (`robocolosseum.policies.gr00t_n17:GR00TN17Adapter`),
    `lingbot_vla_v2` (`...lingbot_vla_v2:LingbotVLAv2Adapter`) and `galaxea_g05`
    (`...galaxea_g05:GalaxeaG05Adapter`), each with a
    `configs/<name>.example.yaml`, a `slurm/<name>.sh`, and a launcher entry.
@@ -180,11 +180,11 @@ do **not** need to change. To add e.g. `OpenGalaxea/G05`, `lerobot/pi05_droid`,
 
 ### Example: `lerobot/pi05_droid` (already wired)
 
-* Adapter `src/robocolosseum/policies/pi05_droid.py` (`Pi05Adapter`) on the
+* Adapter `src/robocolosseum/policies/pi05.py` (`Pi05Adapter`) on the
   LeRobot `PI0Policy` API (`from_pretrained`, `make_pre_post_processors`,
   `predict_action_chunk`). The processor normalises inputs and tokenises the
   instruction; the post-processor un-normalises actions.
-* Registered `"pi05_droid"`; config `configs/pi05_droid.example.yaml`; script
+* Registered `"pi05"`; config `configs/pi05.example.yaml`; script
   `slurm/pi05_droid.sh` (`colosseum-pi05`); launcher entry `pi05-droid`.
 * Install `lerobot` in that env first. Checkpoint specifics already set in the
   config: image keys `base_0_rgb` / `left_wrist_0_rgb`, and `action_dim: 8`

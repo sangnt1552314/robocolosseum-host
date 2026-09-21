@@ -1,0 +1,18 @@
+# SO101 / stack_white_bowls_100episodes — pi0.5 worker config.
+# Minimal config. VERIFY so101-specific values against the checkpoint.
+policy:
+  name: pi05
+  checkpoint: /scratch/e1583535/projects/robocolosseum-training/outputs/pi05-so101-stack-white_bowls-100episodes/checkpoints/004690/pretrained_model
+  dtype: bfloat16
+  device: cuda
+  # SO101 action = 5 arm joints + gripper. VERIFY the checkpoint's image/state keys.
+  action_dim: 6
+
+camera_mapping:
+  external: left_image
+  wrist: right_image
+
+runtime:
+  action_spaces: [joint_position]
+  control_hz: 15
+  max_horizon: 16   # VERIFY against the checkpoint

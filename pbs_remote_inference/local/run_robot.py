@@ -12,7 +12,7 @@ The user never needs Hopper/PBS/qsub access. This program:
 Example::
 
     python pbs_remote_inference/local/run_robot.py \\
-        --model molmoact2-droid \\
+        --model molmoact2 \\
         --launcher-url https://MY-LAUNCHER.ngrok-free.app \\
         --callback-url wss://THEIR-ROBOT.ngrok-free.app/worker \\
         --launcher-token "$LAUNCHER_API_TOKEN" \\
@@ -37,7 +37,10 @@ from pbs_remote_inference.local.launcher_client import (  # noqa: E402
     LauncherClient,
     LauncherError,
 )
-from pbs_remote_inference.local.robot_interface import DummyRobot  # noqa: E402
+from pbs_remote_inference.local.embodiments import (  # noqa: E402
+    available_embodiments,
+    make_robot,
+)
 from pbs_remote_inference.local.robot_server import (  # noqa: E402
     RobotServer,
     RobotServerConfig,
@@ -49,7 +52,44 @@ log = logging.getLogger("run_robot")
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model", required=True, help="Public model name, e.g. molmoact2-droid.")
+    parser.add_argument("--model", required=True, help="Public model name, e.g. molmoact2.")
+    parser.add_argument(
+        "--embodiment",
+        default="so101",
+        choices=available_embodiments(),
+        help="Local robot to drive (default: so101). Use 'dummy' for a fake robot.",
+    )
+    parser.add_argument(
+        "--follower-port",
+        default=os.environ.get("FOLLOWER_PORT", ""),
+        help="SO101 follower serial port (or FOLLOWER_PORT). Required for --embodiment so101.",
+    )
+    parser.add_argument(
+        "--follower-id",
+        default=os.environ.get("FOLLOWER_ID", "home_follower"),
+        help="SO101 follower id (or FOLLOWER_ID).",
+    )
+    parser.add_argument(
+        "--wrist-camera", type=int, default=0, help="OpenCV index of the wrist camera."
+    )
+    parser.add_argument(
+        "--external-camera",
+        type=int,
+        default=1,
+        help="OpenCV index of the external/third-person camera.",
+    )
+    parser.add_argument(
+        "--execute-steps",
+        type=int,
+        default=4,
+        help="Execute only the first N actions of each chunk before requesting a fresh observation.",
+    )
+    parser.add_argument(
+        "--step-delay",
+        type=float,
+        default=0.1,
+        help="Seconds to wait between executed actions within a chunk.",
+    )
     parser.add_argument(
         "--launcher-url", default="", help="Base URL of the launcher API (https://...)."
     )
@@ -103,7 +143,7 @@ async def run(args: argparse.Namespace) -> None:
             raise SystemExit("A --launcher-token (or LAUNCHER_API_TOKEN) is required.")
     callback_token = args.callback_token or secrets.token_urlsafe(24)
 
-    robot = DummyRobot(instruction=args.instruction)
+    robot = make_robot(args.embodiment, args)
     server = RobotServer(
         robot,
         RobotServerConfig(
@@ -123,6 +163,21 @@ async def run(args: argparse.Namespace) -> None:
         None if offline else LauncherClient(args.launcher_url, args.launcher_token)
     )
 
+    log.info("Connecting local robot (embodiment=%s)", args.embodiment)
+    robot.connect()
+    try:
+        await _serve(args, server, client, offline, callback_token)
+    finally:
+        robot.disconnect()
+
+
+async def _serve(
+    args: argparse.Namespace,
+    server: RobotServer,
+    client: LauncherClient | None,
+    offline: bool,
+    callback_token: str,
+) -> None:
     async with websockets.serve(
         server._handler,
         args.host,

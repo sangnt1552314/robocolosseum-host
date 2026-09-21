@@ -2,12 +2,19 @@
 #PBS -P CFP05-CF-002
 #PBS -j oe
 #PBS -k oed
-#PBS -N pbsri-pi05
+#PBS -N pbsri-molmoact2
 #PBS -q auto
 #PBS -l select=1:ngpus=1
 #PBS -l walltime=02:00:00
 
-# GPU inference WORKER for pi05-droid. See molmoact2_droid.pbs for full notes.
+# ---------------------------------------------------------------------------
+# GPU inference WORKER for molmoact2 (default embodiment: so101).
+#
+# The launcher submits this script with:
+#   qsub -v SESSION_ID=...,MODEL=...,CALLBACK_URL=...,CALLBACK_TOKEN=... <this>
+# The worker loads the model ONCE, connects OUTWARD (WSS) to the user's callback
+# server, and exchanges observations/action chunks. It never controls a robot.
+# ---------------------------------------------------------------------------
 
 cd $PBS_O_WORKDIR
 
@@ -16,11 +23,16 @@ if [ -z "$SESSION_ID" ] || [ -z "$MODEL" ] || [ -z "$CALLBACK_URL" ] || [ -z "$C
     exit 1
 fi
 
-image="/app1/common/singularity-img/hopper/pytorch/pytorch_2.6.0_cuda_12.8.sif"
+# Embodiment + task select the worker config under pbs_remote_inference/configs/.
+# Default to so101; the launcher can override with qsub -v EMBODIMENT=...,TASK=...
+EMBODIMENT="${EMBODIMENT:-so101}"
+TASK="${TASK:-stack_white_bowls_100episodes}"
+
+image="/app1/common/singularity-img/hopper/pytorch/pytorch_2.7.0_cuda_12.8.sif"
 
 module load singularity
 
-LOG_DIR='./logs/pbs_remote_inference/pi05_droid'
+LOG_DIR="./logs/pbs_remote_inference/${EMBODIMENT}/molmoact2"
 mkdir -p $LOG_DIR
 
 singularity exec -e --nv \
@@ -33,12 +45,14 @@ singularity exec -e --nv \
 --env MODEL="$MODEL" \
 --env CALLBACK_URL="$CALLBACK_URL" \
 --env CALLBACK_TOKEN="$CALLBACK_TOKEN" \
+--env EMBODIMENT="$EMBODIMENT" \
+--env TASK="$TASK" \
 $image bash << 'EOF' > $LOG_DIR/stdout.$PBS_JOBID.log 2> $LOG_DIR/stderr.$PBS_JOBID.log
 
 mkdir -p /scratch/e1583535/tmp
 
-if [ -d "/scratch/e1583535/virtualenvs/robocolosseum" ]; then
-    source /scratch/e1583535/virtualenvs/robocolosseum/bin/activate
+if [ -d "/scratch/e1583535/virtualenvs/lerobot-cu128" ]; then
+    source /scratch/e1583535/virtualenvs/lerobot-cu128/bin/activate
 fi
 
 echo "Starting inference worker at $(date) on host $(hostname)"
@@ -49,7 +63,7 @@ python pbs_remote_inference/worker/run_worker.py \
     --server "$CALLBACK_URL" \
     --token "$CALLBACK_TOKEN" \
     --session-id "$SESSION_ID" \
-    --config configs/pi05_droid.yaml
+    --config "pbs_remote_inference/configs/${EMBODIMENT}/${TASK}/molmoact2.yaml"
 
 echo "Inference worker ended at $(date)"
 EOF

@@ -1,5 +1,5 @@
 policy:
-  name: gr00t_n17_droid
+  name: gr00t_n17
   checkpoint: nvidia/GR00T-N1.7-DROID
   # GR00T manages precision internally; dtype here is informational only.
   dtype: bfloat16

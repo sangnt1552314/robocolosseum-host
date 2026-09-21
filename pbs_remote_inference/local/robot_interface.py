@@ -39,6 +39,12 @@ class RobotInterface(ABC):
     def safe_stop(self) -> None:
         """Enter a safe hold/stop state (timeout, disconnect, invalid action)."""
 
+    def connect(self) -> None:
+        """Open hardware connections. No-op for simulated robots."""
+
+    def disconnect(self) -> None:
+        """Release hardware connections. No-op for simulated robots."""
+
 
 class DummyRobot(RobotInterface):
     """Deterministic fake robot: fixed state + random camera frames."""

@@ -36,7 +36,7 @@ from .base import BasePolicyAdapter
 log = logging.getLogger(__name__)
 
 
-class GR00TN17DroidAdapter(BasePolicyAdapter):
+class GR00TN17Adapter(BasePolicyAdapter):
     def __init__(self, config: AppConfig) -> None:
         self.config = config
         self.policy_cfg = config.policy
