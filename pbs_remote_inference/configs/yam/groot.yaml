@@ -1,0 +1,24 @@
+# yam — NUSMAGIC/GR00T-N1.7-MolmoAct2-YAM @ 5ba9c403bdb962b88c39f843da536eb8370b61b2
+# LeRobot GR00T N1.7 policy checkpoint (not raw Isaac-GR00T), projector + DiT fine-tune
+# on MolmoAct2-BimanualYAM-Dataset. Built from nvidia/GR00T-N1.7-3B
+# @ 2fc962b973bccdd5d8ce4f67cc63b264d6886495, then loads the fine-tuned weights.
+# State/actions: left 6 joints (rad), left gripper, right 6 joints, right gripper;
+# grippers in [0, 1] (1 = open), absolute targets, 16-step chunks at 30 Hz. Saved
+# processors: min-max normalisation; tokenizer Qwen/Qwen3-VL-2B-Instruct
+# @ 89644892e4d85e24eaac8bacfd4f463576704203. The saved packer orders the cameras
+# alphabetically (left, right, top), as in training. Trained on 360x640 images.
+policy:
+  name: groot
+  checkpoint: /scratch/e1583535/cache/hub/models--NUSMAGIC--GR00T-N1.7-MolmoAct2-YAM/snapshots/5ba9c403bdb962b88c39f843da536eb8370b61b2
+  dtype: float32          # FP32 weights + BF16 autocast, as trained
+  device: cuda
+  base_model: /scratch/e1583535/cache/hub/models--nvidia--GR00T-N1.7-3B/snapshots/2fc962b973bccdd5d8ce4f67cc63b264d6886495
+  processor: /scratch/e1583535/cache/hub/models--Qwen--Qwen3-VL-2B-Instruct/snapshots/89644892e4d85e24eaac8bacfd4f463576704203
+  image_fields:
+    top_cam: observation.images.top
+    left_cam: observation.images.left
+    right_cam: observation.images.right
+  clip_columns: [6, 13]   # grippers to [0, 1], like the Policy Server worker
+
+runtime:
+  max_horizon: 16

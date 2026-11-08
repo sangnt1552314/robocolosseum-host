@@ -1,0 +1,16 @@
+# franka (DROID) — allenai/MolmoAct2-DROID @ d8c1abd8a27d8e859455bbe514df2bcc617db0fb
+# State/actions: 7 joints in radians + gripper in [0, 1], absolute joint positions.
+# Images: [exterior, exterior copy, wrist] (model card), the shared adapter's default.
+policy:
+  name: molmoact2
+  checkpoint: /scratch/e1583535/cache/hub/models--allenai--MolmoAct2-DROID/snapshots/d8c1abd8a27d8e859455bbe514df2bcc617db0fb
+  dtype: bfloat16
+  device: cuda
+  norm_tag: franka_droid
+
+camera_mapping:
+  external: external_cam
+  wrist: wrist_cam
+
+runtime:
+  max_horizon: 15

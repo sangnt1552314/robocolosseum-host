@@ -1,12 +1,12 @@
-"""Worker-local policy registry.
+"""Local policy registry for colosseum_server.py.
 
-Maps a policy name (the ``policy.name`` in the worker YAML, same key used by the
+Maps a policy name (the ``policy.name`` in the config YAML, same key used by the
 shared ``robocolosseum`` registry) to an adapter defined under
-``pbs_remote_inference.policies``. The worker consults this registry first and
+``pbs_remote_inference.policies``. The server consults this registry first and
 falls back to ``robocolosseum.policies.registry`` when a name is absent here, so
 a local adapter transparently overrides the shared one for that model.
 
-To route a model through a worker-local adapter, add one line::
+To route a model through a local adapter, add one line::
 
     "<policy_name>": "pbs_remote_inference.policies.<module>:<ClassName>",
 """
@@ -19,9 +19,12 @@ from typing import Any
 from robocolosseum.policies.base import BasePolicyAdapter
 
 LOCAL_POLICY_REGISTRY: dict[str, str] = {
-    # LeRobot fine-tuned molmoact2 checkpoints (overrides the shared
-    # transformers-based robocolosseum.policies.molmoact2 adapter).
-    "molmoact2": "pbs_remote_inference.policies.molmoact2:MolmoAct2LeRobotAdapter",
+    # allenai/MolmoAct2-* for any embodiment (extends the shared DROID adapter).
+    "molmoact2": "pbs_remote_inference.policies.molmoact2:MolmoAct2Adapter",
+    "lingbot": "pbs_remote_inference.policies.lingbot:LingbotAdapter",  # LingBot-VLA v2 fine-tunes (upstream deploy class)
+    "g05": "pbs_remote_inference.policies.g05:G05Adapter",
+    "pi05": "pbs_remote_inference.policies.pi05:Pi05Adapter",  # LeRobot pi0.5 fine-tunes with saved processors (so101, yam)
+    "groot": "pbs_remote_inference.policies.groot:GrootLeRobotAdapter",  # LeRobot GR00T N1.7 fine-tunes (so101, yam)
 }
 
 

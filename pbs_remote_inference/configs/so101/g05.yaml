@@ -1,0 +1,25 @@
+# so101 — OpenGalaxea/G05 @ e312be81e90c56a55bcb26b57429bd39a335b449, folder g05-so101/
+# (+ action_tokenizer.pt and qwen3_5_2b_base_processor/ from the same snapshot).
+# Weights: the user's existing download in /scratch/e1583535/projects/GalaxeaVLA/checkpoints (hash-checked
+# against e312be81). Verified on an H200: ~1.5 s per /act (CoT text + FM + AR decode), 17.2 GB.
+# Trained on SO100 data in LeRobot's legacy frame (state means: shoulder_lift ~124, elbow_flex ~121 deg),
+# so keep the Policy Server's default joint_frame: legacy. Degrees, gripper [0, 100].
+# The model predicts a 32-step chunk relative to the state (RelativeJointTransform); upstream
+# postprocessing adds the state back, so actions are absolute targets. Weights stay fp32
+# (saved model_weights_to_bf16: false) with bf16 autocast, as upstream serve_policy.py does.
+policy:
+  name: g05
+  checkpoint: /scratch/e1583535/projects/GalaxeaVLA/checkpoints/g05-so101/checkpoints/model_state_dict.pt
+  device: cuda
+  g05_repo: /scratch/e1583535/projects/colosseum-deps/GalaxeaVLA   # OpenGalaxea/GalaxeaVLA @ 89f2322
+  action_tokenizer: /scratch/e1583535/projects/GalaxeaVLA/checkpoints/action_tokenizer.pt
+  processor: /scratch/e1583535/projects/GalaxeaVLA/checkpoints/qwen3_5_2b_base_processor
+  eval_embodiment: so100          # upstream embodiment name of the SO100/101 run
+  frequency: 30
+  image_features: {exterior: external_cam, wrist_right: wrist_cam}
+  padded_images: [wrist_left]     # zero image, as the Policy Server sends
+  state_features: {right_arm: [joints, gripper]}   # 6 values: 5 joints + gripper
+  action_keys: [right_arm]
+
+runtime:
+  max_horizon: 30

@@ -1,0 +1,23 @@
+# so101 — hqfang/groot-so100_101 @ f5e17af8948a647e4c23186a27927bf73d6d784e
+# LeRobot GR00T N1.7 policy checkpoint (not raw Isaac-GR00T), full fine-tune on the
+# MolmoAct2-SO100_101 mixture. Built from nvidia/GR00T-N1.7-3B
+# @ 2fc962b973bccdd5d8ce4f67cc63b264d6886495, then loads the fine-tuned weights.
+# Trained in LeRobot's legacy SO100 frame (state stats: shoulder_lift 24..196 deg,
+# elbow_flex 7..182 deg), so keep the Policy Server's default joint_frame: legacy.
+# Degrees, gripper [0, 100], absolute targets, 40-step chunks. Saved processors:
+# q01/q99 min-max normalisation (no clipping) and the bundled vlm_processor/.
+policy:
+  name: groot
+  checkpoint: /scratch/e1583535/cache/hub/models--hqfang--groot-so100_101/snapshots/f5e17af8948a647e4c23186a27927bf73d6d784e
+  dtype: float32          # FP32 weights + BF16 autocast, as trained
+  device: cuda
+  base_model: /scratch/e1583535/cache/hub/models--nvidia--GR00T-N1.7-3B/snapshots/2fc962b973bccdd5d8ce4f67cc63b264d6886495
+  processor: /scratch/e1583535/cache/hub/models--hqfang--groot-so100_101/snapshots/f5e17af8948a647e4c23186a27927bf73d6d784e/vlm_processor
+  # Camera slots, not fixed views: external -> camera_0, wrist -> camera_1.
+  # camera_2/3 are left out, not zero-padded (model card).
+  image_fields:
+    external_cam: observation.images.camera_0
+    wrist_cam: observation.images.camera_1
+
+runtime:
+  max_horizon: 40

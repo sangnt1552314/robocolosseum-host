@@ -1,0 +1,21 @@
+# yam — NUSMAGIC/pi05-MolmoAct2-YAM @ 2f28d00ac28c543626f5a4f579a3da09bee4a4ed
+# LeRobot pi0.5 fine-tune on MolmoAct2-BimanualYAM: 14 absolute joint targets (left 6
+# joints, left gripper, right 6 joints, right gripper), grippers in [0, 1], 30-step chunks
+# at 30 Hz. Saved processors: q01/q99 normalisation + PaliGemma tokenizer (local copy below).
+# Cameras top, left, right (trained at 640x360; the model letterboxes to 224x224, no crop).
+policy:
+  name: pi05
+  checkpoint: /scratch/e1583535/cache/hub/models--NUSMAGIC--pi05-MolmoAct2-YAM/snapshots/2f28d00ac28c543626f5a4f579a3da09bee4a4ed
+  dtype: bfloat16         # checkpoint dtype
+  device: cuda
+  num_steps: 10
+  tokenizer: /scratch/e1583535/cache/hub/models--google--paligemma-3b-pt-224/snapshots/35e4f46485b4d07967e7e9935bc3786aad50687c
+  image_keys:
+    observation.images.top: top_cam
+    observation.images.left: left_cam
+    observation.images.right: right_cam
+  clip_columns: [6, 13]   # grippers to [0, 1], as the Policy Server worker
+  clip_range: [0.0, 1.0]
+
+runtime:
+  max_horizon: 30

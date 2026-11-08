@@ -1,10 +1,7 @@
-"""Worker-local policy adapters (LeRobot checkpoints).
+"""Local policy adapters for colosseum_server.py.
 
-These adapters live inside ``pbs_remote_inference`` so the worker can load models
-that need a loading path different from the ones in ``robocolosseum.policies``
-(e.g. LeRobot fine-tuned checkpoints) without modifying the shared adapters.
-
-The worker resolves a policy name against :data:`registry.LOCAL_POLICY_REGISTRY`
-first and falls back to the shared ``robocolosseum`` registry when absent. Add a
-new model by dropping an adapter module here and registering one line.
+Adapters here extend the shared ones in ``src/robocolosseum/policies`` (which
+target DROID) for other embodiments, without modifying them. The server looks a
+policy name up in :data:`registry.LOCAL_POLICY_REGISTRY` first and falls back to
+the shared registry. Add a model by dropping a module here and registering one line.
 """

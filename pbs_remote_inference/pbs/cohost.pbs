@@ -1,0 +1,29 @@
+#!/bin/bash
+#PBS -P CFP05-SF-002
+#PBS -j oe
+#PBS -N colosseum-cohost
+#PBS -q auto
+#PBS -l select=1:ngpus=1
+#PBS -l walltime=02:00:00
+
+# Serve several model families for ONE embodiment on ONE GPU: one colosseum_server.py
+# process per family, each in its own container + venv (serve.sh), on ports 9101, 9102, ...
+# in MODELS order. From the repo root:
+#   qsub -v EMBODIMENT=so101,MODELS=molmoact2:pi05:groot pbs_remote_inference/pbs/cohost.pbs
+# Reachable from outside: add TUNNEL=tailscale to -v (private: http://colosseum-<robot>:<port> from
+# your tailnet) or TUNNEL=cloudflare (public https:// URL per model, printed below).
+# Each process takes 10-17 GB of the H200's 141 GB (see README). The job ends when the
+# last server exits.
+
+cd "${PBS_O_WORKDIR:-.}"
+[ -n "$EMBODIMENT" ] && [ -n "$MODELS" ] || {
+    echo "ERROR: set EMBODIMENT and MODELS, e.g. qsub -v EMBODIMENT=so101,MODELS=molmoact2:pi05:groot" >&2; exit 1; }
+module load singularity
+TS_HOSTNAME=${TS_HOSTNAME:-colosseum-$EMBODIMENT}
+[ "$TUNNEL" = tailscale ] && source pbs_remote_inference/pbs/tailscale.sh
+PORT=9101
+for FAMILY in ${MODELS//:/ }; do
+    bash pbs_remote_inference/pbs/serve.sh "$FAMILY" "$EMBODIMENT" "$PORT" &
+    PORT=$((PORT + 1))
+done
+wait

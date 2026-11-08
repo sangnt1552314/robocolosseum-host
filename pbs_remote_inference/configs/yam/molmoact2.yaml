@@ -1,0 +1,14 @@
+# yam (bimanual) — allenai/MolmoAct2-BimanualYAM @ 8dcbed66f2380e4393189c303ea72488eb9e63c2
+# State/actions: [left 6 joints, left gripper, right 6 joints, right gripper];
+# grippers continuous [0, 1], 1 = open. Images [top, left, right] (model card).
+policy:
+  name: molmoact2
+  checkpoint: /scratch/e1583535/cache/hub/models--allenai--MolmoAct2-BimanualYAM/snapshots/8dcbed66f2380e4393189c303ea72488eb9e63c2
+  dtype: bfloat16
+  device: cuda
+  norm_tag: yam_dual_molmoact2
+  image_fields: [top_cam, left_cam, right_cam]
+  action_dim: 14   # model pads actions past 14
+
+runtime:
+  max_horizon: 30

@@ -1,69 +1,20 @@
 #!/bin/bash
-#PBS -P CFP05-CF-002
+#PBS -P CFP05-SF-002
 #PBS -j oe
-#PBS -k oed
-#PBS -N pbsri-molmoact2
+#PBS -N colosseum-molmoact2
 #PBS -q auto
 #PBS -l select=1:ngpus=1
 #PBS -l walltime=00:10:00
 
-# ---------------------------------------------------------------------------
-# GPU inference WORKER for molmoact2 (default embodiment: so101).
-#
-# The launcher submits this script with:
-#   qsub -v SESSION_ID=...,MODEL=...,CALLBACK_URL=...,CALLBACK_TOKEN=... <this>
-# The worker loads the model ONCE, connects OUTWARD (WSS) to the user's callback
-# server, and exchanges observations/action chunks. It never controls a robot.
-# ---------------------------------------------------------------------------
+# Serve one molmoact2 checkpoint over HTTP for Colosseum Policy Server. From the repo root:
+#   qsub -v EMBODIMENT=<so101|yam|franka> pbs_remote_inference/pbs/molmoact2.pbs
+#   qsub -v EMBODIMENT=<so101|yam|franka>,PORT=9101 -l walltime=04:00:00 pbs_remote_inference/pbs/molmoact2.pbs
+# Container + venv: see serve.sh. Several families on one GPU: see cohost.pbs.
+# Reachable from outside: add TUNNEL=tailscale (http://colosseum-<robot>-molmoact2:<port>) or TUNNEL=cloudflare.
 
-cd $PBS_O_WORKDIR
-
-if [ -z "$SESSION_ID" ] || [ -z "$MODEL" ] || [ -z "$CALLBACK_URL" ] || [ -z "$CALLBACK_TOKEN" ]; then
-    echo "ERROR: SESSION_ID, MODEL, CALLBACK_URL and CALLBACK_TOKEN must be set." >&2
-    exit 1
-fi
-
-# Embodiment + task select the worker config under pbs_remote_inference/configs/.
-# Default to so101; the launcher can override with qsub -v EMBODIMENT=...,TASK=...
-EMBODIMENT="${EMBODIMENT:-so101}"
-TASK="${TASK:-stack_white_bowls_100episodes}"
-
-image="/app1/common/singularity-img/hopper/pytorch/pytorch_2.7.0_cuda_12.8.sif"
-
+cd "${PBS_O_WORKDIR:-.}"
+[ -n "$EMBODIMENT" ] || { echo "ERROR: set EMBODIMENT (so101|yam|franka) with qsub -v EMBODIMENT=..." >&2; exit 1; }
 module load singularity
-
-LOG_DIR="./logs/pbs_remote_inference/${EMBODIMENT}/molmoact2"
-mkdir -p $LOG_DIR
-
-singularity exec -e --nv \
---env HF_HOME=/scratch/e1583535/cache \
---env HF_HUB_OFFLINE=1 \
---env TMPDIR=/scratch/e1583535/tmp \
---env TEMP=/scratch/e1583535/tmp \
---env TMP=/scratch/e1583535/tmp \
---env SESSION_ID="$SESSION_ID" \
---env MODEL="$MODEL" \
---env CALLBACK_URL="$CALLBACK_URL" \
---env CALLBACK_TOKEN="$CALLBACK_TOKEN" \
---env EMBODIMENT="$EMBODIMENT" \
---env TASK="$TASK" \
-$image bash << 'EOF' > $LOG_DIR/stdout.$PBS_JOBID.log 2> $LOG_DIR/stderr.$PBS_JOBID.log
-
-mkdir -p /scratch/e1583535/tmp
-
-if [ -d "/scratch/e1583535/virtualenvs/lerobot-cu128" ]; then
-    source /scratch/e1583535/virtualenvs/lerobot-cu128/bin/activate
-fi
-
-echo "Starting inference worker at $(date) on host $(hostname)"
-nvidia-smi --query-gpu=name,memory.total,memory.free --format=csv,noheader,nounits || echo "No GPU detected"
-
-python pbs_remote_inference/worker/run_worker.py \
-    --model "$MODEL" \
-    --server "$CALLBACK_URL" \
-    --token "$CALLBACK_TOKEN" \
-    --session-id "$SESSION_ID" \
-    --config "pbs_remote_inference/configs/${EMBODIMENT}/${TASK}/molmoact2.yaml"
-
-echo "Inference worker ended at $(date)"
-EOF
+TS_HOSTNAME=${TS_HOSTNAME:-colosseum-$EMBODIMENT-molmoact2}
+[ "$TUNNEL" = tailscale ] && source pbs_remote_inference/pbs/tailscale.sh
+bash pbs_remote_inference/pbs/serve.sh molmoact2 "$EMBODIMENT" "${PORT:-9101}"
