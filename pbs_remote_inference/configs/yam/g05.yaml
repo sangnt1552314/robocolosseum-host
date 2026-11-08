@@ -1,0 +1,31 @@
+# yam — RoboColosseum/G05-MolmoAct2-YAM @ 26c91270ce33325a29990b3ff7ea7a4b47bd4ec1 (step-95k full fine-tune).
+# model.pt, .hydra/config.yaml, dataset_stats.json and action_tokenizer.pt are byte-identical to
+# 685add3f; 26c91270 adds configs/data/parts_meta/yam.yaml (the training 27-D parts layout the saved
+# config loads). Qwen3.5 processor: OpenGalaxea/G05 @ e312be81 (the user's local copy, hash-checked).
+# State/actions: left 6 joints, left gripper [0, 1], right 6 joints, right gripper [0, 1].
+# Arms are predicted relative to the state (RelativeJointTransform); upstream postprocessing adds
+# the state back, so actions are absolute targets. Grippers are not inverted; they are clipped to
+# [0, 1] (the Policy Server bridge does the same; its YAM adapter rejects values outside [0, 1]).
+# Weights stay fp32 (saved model_weights_to_bf16: false) with bf16 autocast, as upstream serve_policy.py.
+policy:
+  name: g05
+  checkpoint: /scratch/e1583535/cache/hub/models--RoboColosseum--G05-MolmoAct2-YAM/snapshots/26c91270ce33325a29990b3ff7ea7a4b47bd4ec1/model.pt
+  device: cuda
+  g05_repo: /scratch/e1583535/projects/colosseum-deps/GalaxeaVLA   # OpenGalaxea/GalaxeaVLA @ 89f2322
+  processor: /scratch/e1583535/projects/GalaxeaVLA/checkpoints/qwen3_5_2b_base_processor
+  parts_meta: /scratch/e1583535/cache/hub/models--RoboColosseum--G05-MolmoAct2-YAM/snapshots/26c91270ce33325a29990b3ff7ea7a4b47bd4ec1/configs/data/parts_meta/yam.yaml
+  # action_tokenizer: defaults to the checkpoint's own action_tokenizer.pt
+  eval_embodiment: yam
+  overrides: [model.use_torch_compile=false]
+  frequency: 30
+  image_features: {head_rgb: top_cam, left_wrist_rgb: left_cam, right_wrist_rgb: right_cam}
+  state_features:
+    left_arm: "joints[0:6]"
+    left_gripper: "joints[6:7]"
+    right_arm: "joints[7:13]"
+    right_gripper: "joints[13:14]"
+  action_keys: [left_arm, left_gripper, right_arm, right_gripper]
+  clip_columns: {6: [0.0, 1.0], 13: [0.0, 1.0]}
+
+runtime:
+  max_horizon: 32

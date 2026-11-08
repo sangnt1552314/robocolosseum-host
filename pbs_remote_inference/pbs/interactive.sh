@@ -50,16 +50,19 @@ stop() {
 }
 trap stop INT TERM
 
-PORT=9101
+PORT=9101; i=0; OK=0
 for FAMILY in ${MODELS//:/ }; do
-    until curl -sf -m 2 "http://127.0.0.1:$PORT/healthz" > /dev/null; do
-        alive=0; for p in "${PIDS[@]}"; do kill -0 "$p" 2> /dev/null && alive=1; done
-        [ $alive = 1 ] || { echo "ERROR: servers exited; see logs/pbs_remote_inference/$ROBOT/*/stderr.$PBS_JOBID.log" >&2; exit 1; }
+    while ! curl -sf -m 2 "http://127.0.0.1:$PORT/healthz" > /dev/null; do
+        if ! kill -0 "${PIDS[$i]}" 2> /dev/null; then   # this family's server exited
+            echo "FAILED $FAMILY/$ROBOT on port $PORT: see logs/pbs_remote_inference/$ROBOT/$FAMILY/stderr.$PBS_JOBID.log" >&2
+            break
+        fi
         sleep 3
     done
-    echo "READY $FAMILY/$ROBOT on 127.0.0.1:$PORT"
-    PORT=$((PORT + 1))
+    curl -sf -m 2 "http://127.0.0.1:$PORT/healthz" > /dev/null && { echo "READY $FAMILY/$ROBOT on 127.0.0.1:$PORT"; OK=$((OK + 1)); }
+    PORT=$((PORT + 1)); i=$((i + 1))
 done
+[ $OK -gt 0 ] || { echo "ERROR: no model started." >&2; stop; }
 [ "$TUNNEL_KIND" = tailscale ] && echo "Policy Server side: http://$TS_HOSTNAME:9101, :9102, ... (via the local relay)"
 echo "All models up. Ctrl-C to stop."
 wait
