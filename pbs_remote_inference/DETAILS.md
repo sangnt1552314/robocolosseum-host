@@ -46,10 +46,12 @@ finite chunks of the right shape, rejected a bad request with 500, and answered
 | so101 | pi05 | `hqfang/pi05-so100_101` @ `d3204e03ae84d232e2493a933fd460515904eb58` | 50 | 0.19 s | 17.2 GB | `pi05_so101` |
 | so101 | groot | `hqfang/groot-so100_101` @ `f5e17af8948a647e4c23186a27927bf73d6d784e` | 40 | 0.14 s | 14.1 GB | `groot_so101` |
 | so101 | g05 | `OpenGalaxea/G05` (`g05-so101/`) @ `e312be81e90c56a55bcb26b57429bd39a335b449` | 30 | 1.5 s | 17.2 GB | `molmoact2_so101` ¹ |
+| so101 | lingbot | `RoboColosseum/LingBot-MolmoAct2-So101` @ `af0bbb684bf0579d1c4ba19cfd11b8ebd0de1e18` ⁴ | 50 | 0.24 s | 13.2 GB | `lingbot_so101` |
 | yam | molmoact2 | `allenai/MolmoAct2-BimanualYAM` @ `8dcbed66f2380e4393189c303ea72488eb9e63c2` | 30 | 0.18 s | 12.4 GB | `molmoact2_yam` |
 | yam | pi05 | `NUSMAGIC/pi05-MolmoAct2-YAM` @ `2f28d00ac28c543626f5a4f579a3da09bee4a4ed` | 30 | 0.18 s | 10.2 GB | `pi05_yam` |
 | yam | groot | `NUSMAGIC/GR00T-N1.7-MolmoAct2-YAM` @ `5ba9c403bdb962b88c39f843da536eb8370b61b2` | 16 | 0.15 s | 14.1 GB | `groot_yam` |
 | yam | lingbot | `helen9975/lingbot-vla-v2-6b-molmoact2-yam` @ `af7529f2ea27ff6e77911a98f86c40cfb75d229e` ² | 30 | 0.25 s | 13.2 GB | `lingbot_yam` |
+| yam | g05 | `RoboColosseum/G05-MolmoAct2-YAM` @ `26c91270ce33325a29990b3ff7ea7a4b47bd4ec1` ³ | 32 | 1.4 s | 18.1 GB | `g05_yam` |
 | franka | molmoact2 | `allenai/MolmoAct2-DROID` @ `d8c1abd8a27d8e859455bbe514df2bcc617db0fb` | 15 | 0.16 s | 12.4 GB | `molmoact2` |
 
 ¹ The Policy Server's `g05_so101` speaks WebSocket. Any so101 HTTP adapter name
@@ -67,9 +69,9 @@ Notes:
 - **`num_steps`.** It is used by molmoact2 and pi05. groot (4 steps), lingbot and
   g05 (10 steps) keep their checkpoint's setting.
 
-Still missing (needs an HF token): so101 lingbot (`RoboColosseum/LingBot-MolmoAct2-So101`)
-and yam g05 (`RoboColosseum/G05-MolmoAct2-YAM`). Adapters exist; draft configs are in
-`/scratch/e1583535/tmp/claude_work/{lingbot,g05}/`.
+⁴ Weights are in `checkpoint-100000` (`subfolder` in the Policy Server entry); the repo also has `checkpoint-90000`, and neither has been evaluated on a robot. The same weights are public as `RoboColosseum/so101-lingbot-vla-v2` @ cdcbea5b. Uses `torch.compile` like lingbot yam (`use_compile: false`: 0.70 s per call). `control_hz: 30` is assumed.
+
+³ The weights are identical at 685add3f, 3d0d9bb1 and 26c91270; use whichever revision the Router registered (the Policy Server example uses 685add3f). Like g05 so101, it is slow (~1.4 s per 32-step chunk) because the saved config decodes actions twice.
 
 ### Environments (serve.sh)
 

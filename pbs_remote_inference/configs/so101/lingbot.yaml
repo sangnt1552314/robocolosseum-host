@@ -40,7 +40,8 @@ policy:
     wrist_cam: observation.images.wrist
   chunk_size: 50
   normalize_instruction: true
-  # Upstream's deploy setting; the Policy Server leaves it off. Faster /act, longer startup.
+  # Upstream's deploy setting; the Policy Server leaves it off. /act 0.23 s instead of
+  # 0.70 s on an H200; startup ~2.2 min instead of ~1.8 min (warm inductor cache). 13.2 GB.
   use_compile: true
 
 runtime:
