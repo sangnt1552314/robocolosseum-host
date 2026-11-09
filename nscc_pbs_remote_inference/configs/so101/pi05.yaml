@@ -1,0 +1,20 @@
+# so101 — hqfang/pi05-so100_101 @ d3204e03ae84d232e2493a933fd460515904eb58
+# LeRobot pi0.5 fine-tune on the MolmoAct2-SO100_101 mixture, trained in LeRobot's legacy
+# SO100 frame (the Policy Server's default joint_frame: legacy converts). Degrees,
+# gripper [0, 100], absolute targets, 50-step chunks. Saved processors: q01/q99
+# normalisation + bundled SentencePiece tokenizer. Needs LeRobot b6ec006 + the
+# checkpoint's code/lerobot.patch (venv colosseum-pi05, see pbs/pi05.pbs).
+policy:
+  name: pi05
+  checkpoint: /data/projects/51001013/tansang/cache/hf/hub/models--hqfang--pi05-so100_101/snapshots/d3204e03ae84d232e2493a933fd460515904eb58
+  dtype: float32          # checkpoint dtype (FP32 weights), as the Policy Server worker
+  device: cuda
+  num_steps: 10
+  # Camera slots, not fixed views: external -> camera_0, wrist -> camera_1;
+  # camera_2/3 are zero images flagged as padding.
+  image_keys:
+    observation.images.camera_0: external_cam
+    observation.images.camera_1: wrist_cam
+
+runtime:
+  max_horizon: 50

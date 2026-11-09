@@ -1,0 +1,30 @@
+#!/bin/bash
+#PBS -N colosseum-pi05-nscc
+#PBS -q normal
+#PBS -P 11010001
+#PBS -l select=1:ncpus=24:ngpus=1:mem=275gb
+#PBS -l walltime=02:00:00
+#PBS -j oe
+#PBS -o /data/projects/51001013/tansang/logs/pbs/
+# NSCC ASPIRE 2B: one H200 (1/8 of a node). The 'normal' routing queue sends a 1-GPU job to gdev
+# (walltime <= 2 h) or g1 (2-24 h, shared nodes).
+#
+# Serve one pi05 checkpoint over HTTP for Colosseum Policy Server:
+#   qsub -v EMBODIMENT=<so101|yam> nscc_pbs_remote_inference/pbs/pi05.pbs
+#   qsub -v EMBODIMENT=<so101|yam>,PORT=9131 -l walltime=04:00:00 nscc_pbs_remote_inference/pbs/pi05.pbs
+# Venv: see serve.sh. Several families on one GPU: see cohost.pbs.
+# Reachable from outside: add TUNNEL=tailscale (http://colosseum-<robot>-pi05:<port>).
+
+set -euo pipefail
+
+HOST_ROOT=/scratch/users/nus/duanj1/tansang/projects/robocolosseum-host
+cd "$HOST_ROOT"
+
+: "${EMBODIMENT:?set EMBODIMENT (so101|yam) with qsub -v EMBODIMENT=...}"
+
+source nscc_pbs_remote_inference/pbs/env.sh
+TS_HOSTNAME=${TS_HOSTNAME:-colosseum-$EMBODIMENT-pi05}
+if [ "${TUNNEL:-}" = tailscale ]; then
+    source nscc_pbs_remote_inference/pbs/tailscale.sh
+fi
+bash nscc_pbs_remote_inference/pbs/serve.sh pi05 "$EMBODIMENT" "${PORT:-$(nscc_base_port "$EMBODIMENT")}"

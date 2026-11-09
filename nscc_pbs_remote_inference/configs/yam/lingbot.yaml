@@ -1,0 +1,32 @@
+# yam — helen9975/lingbot-vla-v2-6b-molmoact2-yam @ af7529f2ea27ff6e77911a98f86c40cfb75d229e
+# (checkpoints/global_step_40000/hf_ckpt; intermediate 40K-step fine-tune on
+# allenai/MolmoAct2-BimanualYAM-Dataset, not robot-evaluated).
+# State/actions: 14-D absolute joint positions, [left 6 joints (rad), left gripper,
+# right 6 joints, right gripper], grippers in [0, 1] (no flip), 30 steps at 30 Hz.
+# Images: top_cam/left_cam/right_cam -> the dataset's top/left/right cameras.
+# Upstream normalizes (bounds_99_woclip) and un-normalizes; the adapter adds no
+# state and clips gripper targets to [0, 1] like the Policy Server's yam_lingbot.py.
+# Source: github.com/robbyant/lingbot-vla-v2 @ 4144e9c (inference code identical at be969b8).
+policy:
+  name: lingbot
+  checkpoint: /data/projects/51001013/tansang/cache/hf/hub/models--helen9975--lingbot-vla-v2-6b-molmoact2-yam/snapshots/af7529f2ea27ff6e77911a98f86c40cfb75d229e/checkpoints/global_step_40000/hf_ckpt
+  dtype: bfloat16
+  device: cuda
+  source_root: /scratch/users/nus/duanj1/tansang/projects/lingbot-vla-v2
+  processor: /data/projects/51001013/tansang/cache/hf/hub/models--Qwen--Qwen3-VL-4B-Instruct/snapshots/ebb281ec70b05090aa6165b016eac8ec08e71b17
+  robot_config: /data/projects/51001013/tansang/cache/hf/hub/models--helen9975--lingbot-vla-v2-6b-molmoact2-yam/snapshots/af7529f2ea27ff6e77911a98f86c40cfb75d229e/configs/robot_configs/molmoact2_yam_abs.yaml
+  norm_stats: /data/projects/51001013/tansang/cache/hf/hub/models--helen9975--lingbot-vla-v2-6b-molmoact2-yam/snapshots/af7529f2ea27ff6e77911a98f86c40cfb75d229e/assets/norm_stats/molmoact2_yam_abs.json
+  image_fields:
+    top_cam: observation.images.top
+    left_cam: observation.images.left
+    right_cam: observation.images.right
+  chunk_size: 30
+  # Upstream's deploy setting (README, model card); the Policy Server leaves it off.
+  # /act 0.25 s instead of 0.72 s on an H200; startup ~3 min instead of ~1.7 min
+  # (~4.7 min on a cold inductor cache in $TMPDIR). Same GPU memory (13.2 GB).
+  use_compile: true
+  clip_columns: [6, 13]     # grippers
+  clip_range: [0.0, 1.0]
+
+runtime:
+  max_horizon: 30

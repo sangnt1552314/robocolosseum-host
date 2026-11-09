@@ -1,0 +1,48 @@
+#!/bin/bash
+#PBS -N colosseum-cohost-nscc
+#PBS -q normal
+#PBS -P 11010001
+#PBS -l select=1:ncpus=60:ngpus=5:mem=900gb
+#PBS -l walltime=08:00:00
+#PBS -j oe
+#PBS -o /data/projects/51001013/tansang/logs/pbs/
+# NSCC ASPIRE 2B: 5 H200s on one node, same CPU and memory per GPU as the training jobs. The 'normal'
+# routing queue sends a 5-GPU job to gdev (walltime <= 2 h, at most 2 running jobs per user) or g1
+# (2-24 h, shared nodes).
+#
+# Serve several model families for ONE embodiment, each on its own GPU: one colosseum_server.py process
+# per family, each from its own venv (serve.sh), on consecutive ports in MODELS order, starting at 9101
+# (so101), 9111 (yam) or 9121 (franka); BASE_PORT overrides that. From anywhere:
+#   qsub -v EMBODIMENT=so101,MODELS=molmoact2:pi05:groot nscc_pbs_remote_inference/pbs/cohost.pbs
+# Reachable from outside: add TUNNEL=tailscale to -v (private: http://colosseum-<robot>:<port> from
+# your tailnet). With fewer GPUs than models (-l select=...), models share GPUs in turn.
+# The job ends when the last server exits.
+
+set -euo pipefail
+
+HOST_ROOT=/scratch/users/nus/duanj1/tansang/projects/robocolosseum-host
+cd "$HOST_ROOT"
+
+: "${EMBODIMENT:?set EMBODIMENT and MODELS, e.g. qsub -v EMBODIMENT=so101,MODELS=molmoact2:pi05:groot}"
+: "${MODELS:?set EMBODIMENT and MODELS, e.g. qsub -v EMBODIMENT=so101,MODELS=molmoact2:pi05:groot}"
+
+source nscc_pbs_remote_inference/pbs/env.sh
+TS_HOSTNAME=${TS_HOSTNAME:-colosseum-$EMBODIMENT}
+if [ "${TUNNEL:-}" = tailscale ]; then
+    source nscc_pbs_remote_inference/pbs/tailscale.sh
+fi
+
+mapfile -t GPUS < <(nscc_gpu_list)
+[ ${#GPUS[@]} -gt 0 ] || { echo "ERROR: no GPUs found in this job" >&2; exit 1; }
+FAMILIES=(${MODELS//:/ })
+export OMP_NUM_THREADS=$(( ${NCPUS:-60} / ${#FAMILIES[@]} > 0 ? ${NCPUS:-60} / ${#FAMILIES[@]} : 1 ))
+
+PORT=${BASE_PORT:-$(nscc_base_port "$EMBODIMENT")}
+i=0
+for FAMILY in "${FAMILIES[@]}"; do
+    GPU=${GPUS[$((i % ${#GPUS[@]}))]}
+    echo "$FAMILY -> port $PORT, GPU $GPU"
+    CUDA_VISIBLE_DEVICES=$GPU bash nscc_pbs_remote_inference/pbs/serve.sh "$FAMILY" "$EMBODIMENT" "$PORT" &
+    PORT=$((PORT + 1)); i=$((i + 1))
+done
+wait

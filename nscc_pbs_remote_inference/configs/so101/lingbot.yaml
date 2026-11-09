@@ -1,0 +1,48 @@
+# so101 — RoboColosseum/LingBot-MolmoAct2-So101 @ af0bbb684bf0579d1c4ba19cfd11b8ebd0de1e18
+# (checkpoint-100000; intermediate snapshot of a 200K-step full fine-tune on the MolmoAct2
+# SO100/101 collection, not robot-evaluated). Snapshot checked against the Policy Server's
+# so101_lingbot.py: chunk_size 50, cameras [camera_0, camera_1, camera_2], bounds_99_woclip
+# for arm/effector, manifest indices [0,1,2,3,4,28], absolute_joint_position.
+# State/actions: 6 absolute values in LeRobot's LEGACY SO100 frame (norm stats from
+# allenai/MolmoAct2-SO100_101; the Policy Server's default joint_frame: legacy converts):
+# 5 joints in degrees, gripper 0-100 opening, no flip, no clipping.
+# Images: external_cam -> camera_0, wrist_cam -> camera_1 (camera_2 masked). Instruction is
+# lowercased and stripped of trailing .?! (training's normalize_task_language).
+# Upstream normalizes and un-normalizes; the adapter adds no state.
+# Source: github.com/robbyant/lingbot-vla-v2 @ 4144e9c (inference code identical at be969b8).
+policy:
+  name: lingbot
+  checkpoint: /data/projects/51001013/tansang/cache/hf/hub/models--RoboColosseum--LingBot-MolmoAct2-So101/snapshots/af0bbb684bf0579d1c4ba19cfd11b8ebd0de1e18/checkpoint-100000
+  dtype: bfloat16
+  device: cuda
+  source_root: /scratch/users/nus/duanj1/tansang/projects/lingbot-vla-v2
+  processor: /data/projects/51001013/tansang/cache/hf/hub/models--Qwen--Qwen3-VL-4B-Instruct/snapshots/ebb281ec70b05090aa6165b016eac8ec08e71b17
+  norm_stats: /data/projects/51001013/tansang/cache/hf/hub/models--RoboColosseum--LingBot-MolmoAct2-So101/snapshots/af0bbb684bf0579d1c4ba19cfd11b8ebd0de1e18/checkpoint-100000/finetune_assets/norm_stats.json
+  # training_config: <checkpoint>/lingbotvla_cli.yaml (default)
+  robot_config:             # same mapping as so101_lingbot.py robot_config()
+    states:
+      - observation.state.arm.position:
+          origin_keys: [{observation.state: {start: 0, end: 5}}]
+      - observation.state.effector.position:
+          origin_keys: [{observation.state: {start: 5, end: 6}}]
+    actions:
+      - action.arm.position:
+          origin_keys: [{action: {start: 0, end: 5}}]
+          subtract_state: false
+      - action.effector.position:
+          origin_keys: [{action: {start: 5, end: 6}}]
+          subtract_state: false
+    images:
+      - observation.images.camera_0: {origin_keys: observation.images.external}
+      - observation.images.camera_1: {origin_keys: observation.images.wrist}
+  image_fields:
+    external_cam: observation.images.external
+    wrist_cam: observation.images.wrist
+  chunk_size: 50
+  normalize_instruction: true
+  # Upstream's deploy setting; the Policy Server leaves it off. /act 0.23 s instead of
+  # 0.70 s on an H200; startup ~2.2 min instead of ~1.8 min (warm inductor cache). 13.2 GB.
+  use_compile: true
+
+runtime:
+  max_horizon: 50
