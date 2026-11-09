@@ -130,6 +130,7 @@ class G05Adapter(GalaxeaG05Adapter):
         self._continuous = getattr(policy, "continuous_action", False) is True
         self._log_shape_meta()
         log.info("G0.5 ready (embodiment=%s, continuous=%s)", self.eval_embodiment, self._continuous)
+        print(f"G0.5 {self.eval_embodiment}: frequency input {self.frequency:g} Hz", flush=True)
 
     def _state_part(self, observation: Any, source: Any) -> np.ndarray:
         sources = source if isinstance(source, (list, tuple)) else [source]

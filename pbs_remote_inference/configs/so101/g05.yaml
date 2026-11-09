@@ -7,6 +7,12 @@
 # The model predicts a 32-step chunk relative to the state (RelativeJointTransform); upstream
 # postprocessing adds the state back, so actions are absolute targets. Weights stay fp32
 # (saved model_weights_to_bf16: false) with bf16 autocast, as upstream serve_policy.py does.
+# Rate: 15 Hz. G05 conditions its action decoding on the "frequency" input, and this
+# checkpoint's own SO-100 deployment runs at 15 Hz (GalaxeaVLA experiments/so100:
+# so100_policy_client.py --action-fps default 15, "must match server training FPS";
+# start_client.sh passes 15; scripts/serve_policy.py defaults frequency to 15). So
+# frequency is 15, and the Policy Server registers this model with control_hz: 15
+# (the other so101 models run at 30).
 policy:
   name: g05
   checkpoint: /scratch/e1583535/projects/GalaxeaVLA/checkpoints/g05-so101/checkpoints/model_state_dict.pt
@@ -15,7 +21,7 @@ policy:
   action_tokenizer: /scratch/e1583535/projects/GalaxeaVLA/checkpoints/action_tokenizer.pt
   processor: /scratch/e1583535/projects/GalaxeaVLA/checkpoints/qwen3_5_2b_base_processor
   eval_embodiment: so100          # upstream embodiment name of the SO100/101 run
-  frequency: 30
+  frequency: 15                   # Hz; must match the Policy Server's control_hz: 15
   image_features: {exterior: external_cam, wrist_right: wrist_cam}
   padded_images: [wrist_left]     # zero image, as the Policy Server sends
   state_features: {right_arm: [joints, gripper]}   # 6 values: 5 joints + gripper

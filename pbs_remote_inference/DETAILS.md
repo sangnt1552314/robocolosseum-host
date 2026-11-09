@@ -25,7 +25,7 @@ pbs_remote_inference/
 
 | `--robot` | Image fields | `state` / each action row | `control_hz` |
 |---|---|---|---|
-| `so101` | `external_cam`, `wrist_cam` | 6: 5 joints (deg), gripper [0, 100] | 30 |
+| `so101` | `external_cam`, `wrist_cam` | 6: 5 joints (deg), gripper [0, 100] | 30 (g05: 15) |
 | `yam` | `top_cam`, `left_cam`, `right_cam` | 14: left 6 joints, left gripper, right 6 joints, right gripper; grippers [0, 1], 1 = open | 30 |
 | `franka` (DROID) | `external_cam`, `wrist_cam` | 8: 7 joints (rad), gripper [0, 1] | 15 |
 
@@ -64,6 +64,10 @@ Notes:
 - **g05 so101 latency.** It is slow because its saved config generates
   chain-of-thought text and decodes actions twice. The Policy Server's own G05
   worker runs the same path.
+- **g05 so101 rate: 15 Hz.** G05 conditions its action decoding on a `frequency`
+  input, and this checkpoint's SO-100 deployment code runs at 15 Hz, so
+  `configs/so101/g05.yaml` sets `frequency: 15`. Register it with `control_hz: 15`;
+  the other so101 models use 30.
 - **g05 so101 weights.** It reads the existing download in
   `/scratch/e1583535/projects/GalaxeaVLA/checkpoints`.
 - **`num_steps`.** It is used by molmoact2 and pi05. groot (4 steps), lingbot and
