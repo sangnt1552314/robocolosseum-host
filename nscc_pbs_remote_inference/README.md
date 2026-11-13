@@ -115,5 +115,55 @@ Run one of the two. The GUI reads `configs/robot.so101.yaml`, whose `policy_serv
 `ws://127.0.0.1:8000`. It detects the Policy Server from terminal 2 and uses it instead of
 starting its own.
 
+### If the GUI reports "No permission for /dev/ttyACM0"
+
+This happens on Linux; macOS serial ports (`/dev/tty.usbmodem*`) need no fix. The GUI suggests
+`scripts/fix_serial_permissions.sh`, which the client repository does not ship. Save the script
+below as `fix_serial_permissions.sh` and run it with the arm's port:
+
+```bash
+bash fix_serial_permissions.sh /dev/ttyACM0
+```
+
+```bash
+#!/usr/bin/env bash
+# Let the current user open the SO101 arm's serial port.
+#   bash scripts/fix_serial_permissions.sh [PORT]   (default: /dev/ttyACM0)
+# Grants access now (ACL on the device) and permanently (dialout group, from your next login).
+set -euo pipefail
+
+PORT="${1:-/dev/ttyACM0}"
+USER_NAME="${SUDO_USER:-$USER}"
+
+if [ ! -e "$PORT" ]; then
+  echo "No device at $PORT. Plug in the arm, or pass the port: $0 /dev/ttyACM1" >&2
+  exit 1
+fi
+DEV="$(readlink -f "$PORT")"
+
+GROUP="$(stat -c %G "$DEV")"
+if ! id -nG "$USER_NAME" | tr ' ' '\n' | grep -qx "$GROUP"; then
+  echo "Adding $USER_NAME to group $GROUP (takes effect at next login)…"
+  sudo usermod -aG "$GROUP" "$USER_NAME"
+fi
+
+echo "Granting $USER_NAME read/write on $DEV now…"
+if command -v setfacl >/dev/null; then
+  sudo setfacl -m "u:$USER_NAME:rw" "$DEV"
+else
+  sudo chmod a+rw "$DEV"
+fi
+
+if [ -r "$DEV" ] && [ -w "$DEV" ]; then
+  echo "OK: $PORT is readable and writable. Re-run the check in the GUI."
+else
+  echo "Still no access to $DEV; log out and back in, then try again." >&2
+  exit 1
+fi
+```
+
+It gives you access immediately (an ACL on the device) and adds you to the device's group
+(usually `dialout`) for future logins. Then re-run the check in the GUI.
+
 Everything else (models, environments, measurements, other tunnels, HTTP contract, adding a model)
 is in [DETAILS.md](DETAILS.md).
