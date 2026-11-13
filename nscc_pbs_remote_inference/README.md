@@ -51,8 +51,9 @@ Logs are in `/data/projects/51001013/tansang/logs/nscc_pbs_remote_inference/<rob
 
 ## 2. Connect the Policy Server machine
 
-On the Policy Server machine (once): install Tailscale and log in to the same tailnet, then copy
-`nscc_pbs_remote_inference/policy_server_relay.py` there.
+On the Policy Server machine (once): install Tailscale and log in to the same tailnet. The relay is
+`nscc_pbs_remote_inference/policy_server_relay.py`; `robocolosseum-policy-server` ships the same
+script as `scripts/policy_server_relay.py`.
 
 ```bash
 tailscale status          # colosseum-so101 and colosseum-yam should be listed
@@ -75,6 +76,44 @@ Endpoints for the Policy Server config:
 
 The Hugging Face url, revision, `max_horizon` and `adapter` for each entry are in
 [DETAILS.md](DETAILS.md#models). Leave `joint_frame` unset for so101.
+
+## 3. Run an SO101 evaluation from the laptop
+
+Start the so101 job first (section 1) with `MODELS=molmoact2:pi05:groot:g05:lingbot` and
+`TUNNEL=tailscale`; the relays below assume that model order. `tailscale status` on the laptop
+should list `colosseum-so101`. Then open three terminals, in this order.
+
+**Terminal 1: relays**, from `robocolosseum-policy-server`:
+
+```bash
+python3 scripts/policy_server_relay.py --remote http://colosseum-so101:9101 --port 9201 &   # MolmoAct2
+python3 scripts/policy_server_relay.py --remote http://colosseum-so101:9102 --port 9202 &   # pi0.5
+python3 scripts/policy_server_relay.py --remote http://colosseum-so101:9103 --port 9203 &   # GR00T N1.7
+python3 scripts/policy_server_relay.py --remote http://colosseum-so101:9104 --port 9204 &   # G05
+python3 scripts/policy_server_relay.py --remote http://colosseum-so101:9105 --port 9205     # LingBot
+```
+
+Ctrl-C stops only the LingBot relay; the other four keep running in the background. Stop them all
+with `pkill -f policy_server_relay.py`.
+
+**Terminal 2: Policy Server**, from `robocolosseum-policy-server`:
+
+```bash
+conda activate colosseum-policy
+colosseum-policy-local --config configs/local-runtime-so101.yaml
+```
+
+**Terminal 3: web GUI**, from `colosseum-client`, then open http://127.0.0.1:8770:
+
+```bash
+conda activate colosseum-client
+python scripts/eval_gui.py --offline   # offline: no Router; two local policies picked at random, nothing uploaded
+python scripts/eval_gui.py             # online: the Router assigns the models and results are submitted to it
+```
+
+Run one of the two. The GUI reads `configs/robot.so101.yaml`, whose `policy_server_url` must be
+`ws://127.0.0.1:8000`. It detects the Policy Server from terminal 2 and uses it instead of
+starting its own.
 
 Everything else (models, environments, measurements, other tunnels, HTTP contract, adding a model)
 is in [DETAILS.md](DETAILS.md).

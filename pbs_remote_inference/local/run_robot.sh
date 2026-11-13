@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export LAUNCHER_API_TOKEN=""
+export LAUNCHER_API_TOKEN="4e03ba5488f3eafebf5217b5ef8f89f6ab02946c932cc106051ce1c6ee75e204"
 
 python pbs_remote_inference/local/run_robot.py \
   --model molmoact2 \
@@ -9,6 +9,6 @@ python pbs_remote_inference/local/run_robot.py \
   --wrist-camera 0 \
   --external-camera 1 \
   --instruction "stack the white bowls" \
-  --launcher-url "<LAUNCHER_URL>" \
-  --callback-url "<CALLBACK_URL>" \
+  --launcher-url https://bucktooth-deck-suitably.ngrok-free.dev \
+  --callback-url wss://uncheating-rolanda-noncaustic.ngrok-free.dev/worker \
   --launcher-token "$LAUNCHER_API_TOKEN"
