@@ -77,13 +77,15 @@ Endpoints for the Policy Server config:
 The Hugging Face url, revision, `max_horizon` and `adapter` for each entry are in
 [DETAILS.md](DETAILS.md#models). Leave `joint_frame` unset for so101.
 
-## 3. Run an SO101 evaluation from the laptop
+## 3. Run an evaluation from the laptop
 
-Start the so101 job first (section 1) with `MODELS=molmoact2:pi05:groot:g05:lingbot` and
-`TUNNEL=tailscale`; the relays below assume that model order. `tailscale status` on the laptop
-should list `colosseum-so101`. Then open three terminals, in this order.
+Start the robot's job first (section 1) with `TUNNEL=tailscale` and the `MODELS` order shown there;
+the relays below assume that order. `tailscale status` on the laptop should list `colosseum-so101`
+or `colosseum-yam`. Then open three terminals, in this order.
 
-**Terminal 1: relays**, from `robocolosseum-policy-server`:
+**Terminal 1: relays**, from `robocolosseum-policy-server`.
+
+so101:
 
 ```bash
 python3 scripts/policy_server_relay.py --remote http://colosseum-so101:9101 --port 9201 &   # MolmoAct2
@@ -93,27 +95,43 @@ python3 scripts/policy_server_relay.py --remote http://colosseum-so101:9104 --po
 python3 scripts/policy_server_relay.py --remote http://colosseum-so101:9105 --port 9205     # LingBot
 ```
 
-Ctrl-C stops only the LingBot relay; the other four keep running in the background. Stop them all
+yam:
+
+```bash
+python3 scripts/policy_server_relay.py --remote http://colosseum-yam:9111 --port 9211 &   # MolmoAct2
+python3 scripts/policy_server_relay.py --remote http://colosseum-yam:9112 --port 9212 &   # pi0.5
+python3 scripts/policy_server_relay.py --remote http://colosseum-yam:9113 --port 9213 &   # GR00T N1.7
+python3 scripts/policy_server_relay.py --remote http://colosseum-yam:9114 --port 9214 &   # LingBot
+python3 scripts/policy_server_relay.py --remote http://colosseum-yam:9115 --port 9215     # G05
+```
+
+Ctrl-C stops only the last relay; the other four keep running in the background. Stop them all
 with `pkill -f policy_server_relay.py`.
 
 **Terminal 2: Policy Server**, from `robocolosseum-policy-server`:
 
 ```bash
 conda activate colosseum-policy
-colosseum-policy-local --config configs/local-runtime-so101.yaml
+colosseum-policy-local --config configs/local-runtime-so101.yaml   # so101
+colosseum-policy-local --config configs/local-runtime-yam.yaml     # yam
 ```
 
 **Terminal 3: web GUI**, from `colosseum-client`, then open http://127.0.0.1:8770:
 
 ```bash
 conda activate colosseum-client
-python scripts/eval_gui.py --offline   # offline: no Router; two local policies picked at random, nothing uploaded
-python scripts/eval_gui.py             # online: the Router assigns the models and results are submitted to it
+# so101
+python scripts/eval_gui.py --config configs/robot.so101.yaml --server-config configs/local-runtime-so101.yaml --offline # testing only
+python scripts/eval_gui.py --config configs/robot.so101.yaml --server-config configs/local-runtime-so101.yaml
+# yam
+python scripts/eval_gui.py --config configs/robot.yam.yaml --server-config configs/local-runtime-yam.yaml --offline # testing only
+python scripts/eval_gui.py --config configs/robot.yam.yaml --server-config configs/local-runtime-yam.yaml
 ```
 
-Run one of the two. The GUI reads `configs/robot.so101.yaml`, whose `policy_server_url` must be
-`ws://127.0.0.1:8000`. It detects the Policy Server from terminal 2 and uses it instead of
-starting its own.
+Run one line for your robot. `--offline`: no Router; two local policies picked at random, nothing
+uploaded. Without it, the Router assigns the models and results are submitted to it. The robot
+config's `policy_server_url` must be `ws://127.0.0.1:8000`. The GUI detects the Policy Server from
+terminal 2 and uses it instead of starting its own.
 
 ### If the GUI reports "No permission for /dev/ttyACM0"
 
