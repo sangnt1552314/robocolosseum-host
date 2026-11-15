@@ -81,7 +81,25 @@ The Hugging Face url, revision, `max_horizon` and `adapter` for each entry are i
 
 Start the robot's job first (section 1) with `TUNNEL=tailscale` and the `MODELS` order shown there;
 the relays below assume that order. `tailscale status` on the laptop should list `colosseum-so101`
-or `colosseum-yam`. Then open three terminals, in this order.
+or `colosseum-yam`.
+
+**One command.** Download the script once into `~/Workspace`, next to `robocolosseum-client` and
+`robocolosseum-policy-server`:
+
+```bash
+curl -fsSL -o ~/Workspace/run_nscc_eval.sh https://raw.githubusercontent.com/sangnt1552314/robocolosseum-host/master/nscc_pbs_remote_inference/run_nscc_eval.sh
+```
+
+Then run it and open http://127.0.0.1:8770:
+
+```bash
+bash ~/Workspace/run_nscc_eval.sh -e so101   # or -e yam; add --offline for testing only
+```
+
+It does terminals 1-3 below: relays, wait for the models, Policy Server, then the GUI. Ctrl-C
+stops everything. `--help` lists the options. Logs go to `robocolosseum-client/local/logs/nscc-<robot>/`.
+
+**Or by hand**, in three terminals, in this order.
 
 **Terminal 1: relays**, from `robocolosseum-policy-server`.
 
