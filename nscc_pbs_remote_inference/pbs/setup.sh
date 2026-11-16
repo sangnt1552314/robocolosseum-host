@@ -4,10 +4,13 @@
 # and adds only what inference needs. HF_TOKEN comes from the environment, this folder's .env or the
 # training repo's .env.
 #
-#   bash nscc_pbs_remote_inference/pbs/setup.sh [all|models|pi05|tailscale|check ...]
+#   bash nscc_pbs_remote_inference/pbs/setup.sh [all|models|pi05|sam3|tailscale|check ...]
 #
 #   models     pinned inference checkpoints -> $HF_HUB_CACHE, and the pinned G05 assets -> $G05_ASSETS
 #   pi05       colosseum-pi05 venv: LeRobot b6ec006 + the patch shipped with hqfang/pi05-so100_101
+#   sam3       optional, not part of `all`: SAM3 segmentation server for CaP-X LLMs -> $SAM3_VENV, and
+#              sam3.pt (3.45 GB, ModelScope, no HF token) -> $SAM3_CKPT. Installing sam3 and its weights
+#              means accepting Meta's SAM License.
 #   tailscale  tailscale + tailscaled binaries -> $TOOLS_ROOT/tailscale
 #   check      report any venv or path named in the so101 and yam configs that is missing
 #
@@ -21,6 +24,7 @@ PI05_SO101_REV=d3204e03ae84d232e2493a933fd460515904eb58
 LEROBOT_PI05_SHA=b6ec0060779550c0a157ae34feb89e0cf86012a8
 TAILSCALE_VERSION=1.104.5
 G05_REV=e312be81e90c56a55bcb26b57429bd39a335b449
+SAM3_SERVER_SHA=300234cfa353ff00df950dc31ef41eadff747c58   # RoboColosseum/robocolosseum-policy-server
 
 load_hf_token() {
     local env_file
@@ -89,6 +93,25 @@ step_pi05() {
     fi
     "$PI05_VENV/bin/python" -c "import torch, lerobot; from lerobot.policies.pi05.modeling_pi05 import PI05Policy; \
 print('lerobot', lerobot.__version__, 'torch', torch.__version__, torch.version.cuda)"
+}
+
+step_sam3() {
+    # As step_pi05: everything this step writes stays on /data.
+    local UV_CACHE_DIR="$DATA_ROOT/cache/uv" TMPDIR="$DATA_ROOT/tmp"
+    export UV_CACHE_DIR TMPDIR PYTHONDONTWRITEBYTECODE=1
+    mkdir -p "$(dirname "$SAM3_VENV")" "$UV_CACHE_DIR" "$TMPDIR" "$MODELSCOPE_CACHE"
+
+    [ -x "$SAM3_VENV/bin/python" ] || uv venv -q -p 3.10 "$SAM3_VENV"
+    uv pip install -p "$SAM3_VENV" --torch-backend cu128 \
+        "inspect-robots-sam3-server @ git+https://github.com/RoboColosseum/robocolosseum-policy-server.git@$SAM3_SERVER_SHA#subdirectory=servers/sam3"
+    # Resumable; it writes sam3.pt.part and renames it only once the size matches. Jobs pass
+    # --checkpoint, so they download nothing. modelscope.cn is unreachable from NSCC (TLS reset), and
+    # the downloader asks it for the size even when the file is complete, so skip it when sam3.pt is
+    # already in place (e.g. downloaded elsewhere and copied to $SAM3_CKPT).
+    [ -s "$SAM3_CKPT" ] || "$SAM3_VENV/bin/python" -m sam3_server.modelscope_download
+    [ -s "$SAM3_CKPT" ] || { echo "ERROR: $SAM3_CKPT is missing or empty after the download" >&2; exit 1; }
+    "$SAM3_VENV/bin/python" -c "import torch, sam3, sam3_server.server; \
+print('sam3_server ok, torch', torch.__version__, torch.version.cuda)"
 }
 
 step_tailscale() {

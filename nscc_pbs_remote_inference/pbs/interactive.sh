@@ -52,14 +52,16 @@ trap stop INT TERM
 
 PORT=$BASE_PORT; i=0; OK=0
 for FAMILY in ${MODELS//:/ }; do
-    while ! curl -sf -m 2 "http://127.0.0.1:$PORT/healthz" > /dev/null; do
+    HEALTH=/healthz
+    if [ "$FAMILY" = sam3 ]; then HEALTH=/openapi.json; fi   # sam3_server (FastAPI) has no /healthz
+    while ! curl -sf -m 2 "http://127.0.0.1:$PORT$HEALTH" > /dev/null; do
         if ! kill -0 "${PIDS[$i]}" 2> /dev/null; then   # this family's server exited
             echo "FAILED $FAMILY/$ROBOT on port $PORT: see $LOG_ROOT/$ROBOT/$FAMILY/stderr.$PBS_JOBID.log" >&2
             break
         fi
         sleep 3
     done
-    if curl -sf -m 2 "http://127.0.0.1:$PORT/healthz" > /dev/null; then
+    if curl -sf -m 2 "http://127.0.0.1:$PORT$HEALTH" > /dev/null; then
         echo "READY $FAMILY/$ROBOT on 127.0.0.1:$PORT"
         OK=$((OK + 1))
     fi

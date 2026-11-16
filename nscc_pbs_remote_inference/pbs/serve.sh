@@ -1,7 +1,8 @@
 #!/bin/bash
 # Start one colosseum_server.py for <family> on <robot> at 127.0.0.1:<port>, from that family's
 # virtualenv. Run on a GPU node. Used by <family>.pbs (one model), cohost.pbs and interactive.sh
-# (several models sharing one GPU). Blocks until the server exits.
+# (several models sharing one GPU). Blocks until the server exits. Family `sam3` starts the SAM3
+# segmentation server for CaP-X LLMs instead (no config, no /healthz; see setup.sh sam3).
 #
 #   bash nscc_pbs_remote_inference/pbs/serve.sh <family> <robot> <port>
 set -euo pipefail
@@ -18,11 +19,18 @@ case "$FAMILY" in
     pi05)      VENV=$PI05_VENV ;;      # LeRobot b6ec006 + hqfang/pi05-so100_101 patch (setup.sh pi05)
     lingbot)   VENV=$LINGBOT_VENV ;;   # projects/lingbot-vla-v2 @ be969b8
     g05)       VENV=$G05_VENV ;;       # projects/GalaxeaVLA @ 89f2322
-    *) echo "ERROR: unknown family '$FAMILY' (molmoact2, pi05, groot, lingbot, g05)" >&2; exit 1 ;;
+    sam3)      VENV=$SAM3_VENV ;;      # inspect-robots-sam3-server (setup.sh sam3)
+    *) echo "ERROR: unknown family '$FAMILY' (molmoact2, pi05, groot, lingbot, g05, sam3)" >&2; exit 1 ;;
 esac
 [ -x "$VENV/bin/python" ] || { echo "ERROR: no venv at $VENV (see pbs/setup.sh)" >&2; exit 1; }
-CONFIG="$INFER_DIR/configs/$ROBOT/$FAMILY.yaml"
-[ -f "$CONFIG" ] || { echo "ERROR: no config $CONFIG" >&2; exit 1; }
+if [ "$FAMILY" = sam3 ]; then
+    SERVER=sam3_server
+    [ -s "$SAM3_CKPT" ] || { echo "ERROR: no SAM3 checkpoint at $SAM3_CKPT (run pbs/setup.sh sam3)" >&2; exit 1; }
+else
+    SERVER=colosseum_server
+    CONFIG="$INFER_DIR/configs/$ROBOT/$FAMILY.yaml"
+    [ -f "$CONFIG" ] || { echo "ERROR: no config $CONFIG" >&2; exit 1; }
+fi
 
 JOB=${PBS_JOBID:-local}
 LOG_DIR="$LOG_ROOT/$ROBOT/$FAMILY"
@@ -73,8 +81,12 @@ fi
 # Jobs run offline from the local snapshots named in the configs.
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 PYTHONUNBUFFERED=1
 {
-    echo "Starting colosseum_server at $(date) on host $(hostname), GPU ${CUDA_VISIBLE_DEVICES:-all}"
+    echo "Starting $SERVER at $(date) on host $(hostname), GPU ${CUDA_VISIBLE_DEVICES:-all}"
     nvidia-smi --query-gpu=name,memory.total,memory.free --format=csv,noheader,nounits || echo "No GPU detected"
-    "$VENV/bin/python" "$INFER_DIR/colosseum_server.py" --robot "$ROBOT" --config "$CONFIG" --port "$PORT"
-    echo "colosseum_server ended at $(date)"
+    if [ "$FAMILY" = sam3 ]; then
+        "$VENV/bin/python" -m sam3_server --host 127.0.0.1 --port "$PORT" --checkpoint "$SAM3_CKPT"
+    else
+        "$VENV/bin/python" "$INFER_DIR/colosseum_server.py" --robot "$ROBOT" --config "$CONFIG" --port "$PORT"
+    fi
+    echo "$SERVER ended at $(date)"
 } > "$LOG_DIR/stdout.$JOB.log" 2> "$LOG_DIR/stderr.$JOB.log"

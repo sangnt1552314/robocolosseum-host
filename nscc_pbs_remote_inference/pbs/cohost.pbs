@@ -2,10 +2,10 @@
 #PBS -N colosseum-cohost-nscc
 #PBS -q normal
 #PBS -P 11010001
-#PBS -l select=1:ncpus=60:ngpus=5:mem=900gb
-#PBS -l walltime=08:00:00
+#PBS -l select=1:ncpus=24:ngpus=1:mem=275gb
+#PBS -l walltime=04:00:00
 #PBS -j oe
-#PBS -o /data/projects/51001013/tansang/logs/pbs/
+#PBS -o /home/users/nus/duanj1/scratch/tansang/projects/robocolosseum-host/logs/nscc_pbs_remote_inference/pbs/
 # NSCC ASPIRE 2B: 5 H200s on one node, same CPU and memory per GPU as the training jobs. The 'normal'
 # routing queue sends a 5-GPU job to gdev (walltime <= 2 h, at most 2 running jobs per user) or g1
 # (2-24 h, shared nodes).

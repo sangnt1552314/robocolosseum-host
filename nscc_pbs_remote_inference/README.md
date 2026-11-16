@@ -77,6 +77,31 @@ Endpoints for the Policy Server config:
 The Hugging Face url, revision, `max_horizon` and `adapter` for each entry are in
 [DETAILS.md](DETAILS.md#models). Leave `joint_frame` unset for so101.
 
+## SAM3 for CaP-X LLMs (so101, optional)
+
+The Policy Server's `-capx` models (CaP-X code-as-policy LLMs) call a SAM3 segmentation server
+(`POST /segment`, `POST /segment_point`). The laptop has no GPU, so SAM3 runs in the so101 job as a
+sixth family. Set it up once on the login node. This installs Meta's SAM3 code and downloads
+`sam3.pt` (3.45 GB), which means accepting Meta's SAM License:
+
+```bash
+bash nscc_pbs_remote_inference/pbs/setup.sh sam3
+qsub -v EMBODIMENT=so101,MODELS=molmoact2:pi05:groot:g05:lingbot:sam3,TUNNEL=tailscale nscc_pbs_remote_inference/pbs/cohost.pbs
+```
+
+Put `sam3` last, so the VLAs keep ports 9101-9105 and SAM3 gets 9106. With 5 GPUs it shares GPU 0
+with MolmoAct2; with 1 GPU all six share it. No relay is needed: the Policy Server reaches SAM3
+directly over Tailscale, with `capx.sam3_url: http://colosseum-so101:9106`.
+
+SAM3 has no `/healthz`. Check it from the laptop with:
+
+```bash
+curl -sf http://colosseum-so101:9106/openapi.json > /dev/null && echo SAM3 up
+```
+
+On NSCC, its log is `/data/projects/51001013/tansang/logs/nscc_pbs_remote_inference/so101/sam3/stderr.<jobid>.log`
+(`Uvicorn running on http://127.0.0.1:9106` when ready).
+
 ## 3. Run an evaluation from the laptop
 
 Start the robot's job first (section 1) with `TUNNEL=tailscale` and the `MODELS` order shown there;

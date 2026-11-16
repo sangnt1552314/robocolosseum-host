@@ -16,6 +16,7 @@ export LEROBOT_VENV="$VENVS_ROOT/lerobot-v0.6.1"  # shared with training, used r
 export LINGBOT_VENV="$VENVS_ROOT/lingbot-vla-v2"  # shared with training, used read-only
 export G05_VENV="$VENVS_ROOT/g05"                 # shared with training, used read-only
 export PI05_VENV="$DATA_ROOT/venvs/colosseum-pi05"  # inference only, built by setup.sh; on /data for the file-count limit
+export SAM3_VENV="$DATA_ROOT/venvs/sam3"            # SAM3 server for CaP-X LLMs (setup.sh sam3); on /data for the file-count limit
 
 export PATH="$TANSANG_ROOT/bin:$PATH"
 export UV_PYTHON_INSTALL_DIR="$TANSANG_ROOT/python"
@@ -24,6 +25,8 @@ export UV_HTTP_TIMEOUT="${UV_HTTP_TIMEOUT:-600}"
 
 export HF_HOME="$DATA_ROOT/cache/hf"
 export HF_HUB_CACHE="$HF_HOME/hub"
+export MODELSCOPE_CACHE="$DATA_ROOT/cache/modelscope"
+export SAM3_CKPT="$MODELSCOPE_CACHE/models/facebook/sam3/sam3.pt"   # setup.sh sam3
 # Jobs write everything below to /data: scratch is at its file-count limit, and a full cache crashes a model.
 export TMPDIR="$DATA_ROOT/tmp"
 export TMP="$TMPDIR"
