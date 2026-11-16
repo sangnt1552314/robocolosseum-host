@@ -12,6 +12,7 @@ Checkpoints are in `/data/projects/51001013/tansang/cache`, because scratch has 
 ```bash
 cd /scratch/users/nus/duanj1/tansang/projects/robocolosseum-host
 bash nscc_pbs_remote_inference/pbs/setup.sh all     # checkpoints, pi05 venv, Tailscale binaries, check
+bash nscc_pbs_remote_inference/pbs/setup.sh sam3    # SAM3 for the -capx LLMs (see "SAM3" below)
 cp nscc_pbs_remote_inference/.env.example nscc_pbs_remote_inference/.env   # then set TS_AUTHKEY
 ```
 
@@ -24,8 +25,8 @@ cp nscc_pbs_remote_inference/.env.example nscc_pbs_remote_inference/.env   # the
 `-l walltime=02:00:00` or less runs in `gdev`.
 
 ```bash
-qsub -v EMBODIMENT=so101,MODELS=molmoact2:pi05:groot:g05:lingbot,TUNNEL=tailscale nscc_pbs_remote_inference/pbs/cohost.pbs
-qsub -v EMBODIMENT=yam,MODELS=molmoact2:pi05:groot:lingbot:g05,TUNNEL=tailscale nscc_pbs_remote_inference/pbs/cohost.pbs
+qsub -v EMBODIMENT=so101,MODELS=molmoact2:pi05:groot:g05:lingbot:sam3,TUNNEL=tailscale nscc_pbs_remote_inference/pbs/cohost.pbs
+qsub -v EMBODIMENT=yam,MODELS=molmoact2:pi05:groot:lingbot:g05:sam3,TUNNEL=tailscale nscc_pbs_remote_inference/pbs/cohost.pbs
 ```
 
 **Interactive job** (quick tests). It ends when your terminal closes, so use `tmux` for long runs:
@@ -33,7 +34,7 @@ qsub -v EMBODIMENT=yam,MODELS=molmoact2:pi05:groot:lingbot:g05,TUNNEL=tailscale 
 ```bash
 qsub -I -P 11010001 -q normal -l select=1:ncpus=60:ngpus=5:mem=900gb -l walltime=02:00:00
 cd /scratch/users/nus/duanj1/tansang/projects/robocolosseum-host
-bash nscc_pbs_remote_inference/pbs/interactive.sh so101 molmoact2:pi05:groot:g05:lingbot tailscale
+bash nscc_pbs_remote_inference/pbs/interactive.sh so101 molmoact2:pi05:groot:g05:lingbot:sam3 tailscale
 ```
 
 The script prints `READY <model>` per model; Ctrl-C stops everything.
@@ -77,30 +78,31 @@ Endpoints for the Policy Server config:
 The Hugging Face url, revision, `max_horizon` and `adapter` for each entry are in
 [DETAILS.md](DETAILS.md#models). Leave `joint_frame` unset for so101.
 
-## SAM3 for CaP-X LLMs (so101, optional)
+## SAM3 for CaP-X LLMs
 
 The Policy Server's `-capx` models (CaP-X code-as-policy LLMs) call a SAM3 segmentation server
-(`POST /segment`, `POST /segment_point`). The laptop has no GPU, so SAM3 runs in the so101 job as a
-sixth family. Set it up once on the login node. This installs Meta's SAM3 code and downloads
-`sam3.pt` (3.45 GB), which means accepting Meta's SAM License:
+(`POST /segment`, `POST /segment_point`). The laptop has no GPU, so each job runs SAM3 as a sixth
+family: the commands in section 1 end with `:sam3`. CaP-X supports only SO-101 for now, so the yam
+job's SAM3 sits unused until it supports yam. Set it up once on the login node with
+`setup.sh sam3`. This installs Meta's SAM3 code and downloads `sam3.pt` (3.45 GB), which means
+accepting Meta's SAM License. modelscope.cn is unreachable from NSCC, so download `sam3.pt`
+elsewhere and copy it to `/data/projects/51001013/tansang/cache/modelscope/models/facebook/sam3/sam3.pt`
+first; `setup.sh sam3` then skips the download.
 
-```bash
-bash nscc_pbs_remote_inference/pbs/setup.sh sam3
-qsub -v EMBODIMENT=so101,MODELS=molmoact2:pi05:groot:g05:lingbot:sam3,TUNNEL=tailscale nscc_pbs_remote_inference/pbs/cohost.pbs
-```
-
-Put `sam3` last, so the VLAs keep ports 9101-9105 and SAM3 gets 9106. With 5 GPUs it shares GPU 0
-with MolmoAct2; with 1 GPU all six share it. No relay is needed: the Policy Server reaches SAM3
-directly over Tailscale, with `capx.sam3_url: http://colosseum-so101:9106`.
+Keep `sam3` last, so the VLAs keep their ports and SAM3 gets the next one: 9106 for so101, 9116 for
+yam. With 5 GPUs it shares GPU 0 with MolmoAct2; with 1 GPU all six share it. No relay is needed:
+the Policy Server reaches SAM3 directly over Tailscale, so its so101 config needs
+`capx.sam3_url: http://colosseum-so101:9106`.
+To run without it, drop `:sam3` from `MODELS` and pass `--no-sam3` to `run_nscc_eval.sh`.
 
 SAM3 has no `/healthz`. Check it from the laptop with:
 
 ```bash
-curl -sf http://colosseum-so101:9106/openapi.json > /dev/null && echo SAM3 up
+curl -sf http://colosseum-so101:9106/openapi.json > /dev/null && echo SAM3 up   # yam: colosseum-yam:9116
 ```
 
-On NSCC, its log is `/data/projects/51001013/tansang/logs/nscc_pbs_remote_inference/so101/sam3/stderr.<jobid>.log`
-(`Uvicorn running on http://127.0.0.1:9106` when ready).
+On NSCC, its log is `/data/projects/51001013/tansang/logs/nscc_pbs_remote_inference/<robot>/sam3/stderr.<jobid>.log`
+(`Uvicorn running on http://127.0.0.1:<port>` when ready).
 
 ## 3. Run an evaluation from the laptop
 
@@ -121,8 +123,10 @@ Then run it and open http://127.0.0.1:8770:
 bash ~/Workspace/run_nscc_eval.sh -e so101   # or -e yam; add --offline for testing only
 ```
 
-It does terminals 1-3 below: relays, wait for the models, Policy Server, then the GUI. Ctrl-C
-stops everything. `--help` lists the options. Logs go to `robocolosseum-client/local/logs/nscc-<robot>/`.
+It does terminals 1-3 below: relays, wait for the models and SAM3 (port 9106 for so101, 9116 for
+yam), Policy Server, then the GUI. For so101 it also warns when the Policy Server config's
+`capx.sam3_url` is not `http://colosseum-so101:9106`. Ctrl-C stops everything. `--help` lists the
+options. Logs go to `robocolosseum-client/local/logs/nscc-<robot>/`.
 
 **Or by hand**, in three terminals, in this order.
 
@@ -136,6 +140,7 @@ python3 scripts/policy_server_relay.py --remote http://colosseum-so101:9102 --po
 python3 scripts/policy_server_relay.py --remote http://colosseum-so101:9103 --port 9203 &   # GR00T N1.7
 python3 scripts/policy_server_relay.py --remote http://colosseum-so101:9104 --port 9204 &   # G05
 python3 scripts/policy_server_relay.py --remote http://colosseum-so101:9105 --port 9205     # LingBot
+# SAM3 (port 9106) needs no relay: capx.sam3_url points straight at http://colosseum-so101:9106
 ```
 
 yam:
