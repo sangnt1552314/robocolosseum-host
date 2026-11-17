@@ -21,11 +21,31 @@ qsub -v EMBODIMENT=yam,MODELS=molmoact2:pi05:groot:lingbot:g05,TUNNEL=tailscale 
 qsub -I -P CFP05-SF-002 -l select=1:ngpus=1 -l walltime=02:00:00
 cd /scratch/e1583535/projects/robocolosseum-hosted
 bash pbs_remote_inference/pbs/interactive.sh so101 molmoact2:pi05:groot:g05:lingbot tailscale
-# or, in a second interactive job:
-bash pbs_remote_inference/pbs/interactive.sh yam molmoact2:pi05:groot:lingbot:g05 tailscale
+# or: bash pbs_remote_inference/pbs/interactive.sh yam molmoact2:pi05:groot:lingbot:g05 tailscale
 ```
 
-The script prints `READY <model>` per model after 1–5 min; Ctrl-C stops everything.
+The interactive queue runs one job per user (at most 2 GPUs, 2 h). For both robots at once, ask
+for 2 GPUs: so101 runs on one and yam on the other, since the ten models need ~143 GB:
+
+```bash
+qsub -I -P CFP05-SF-002 -l select=1:ngpus=2 -l walltime=02:00:00
+cd /scratch/e1583535/projects/robocolosseum-hosted
+bash pbs_remote_inference/pbs/interactive_one_for_all.sh
+```
+
+The scripts print `READY <model>` per model after 1–5 min; Ctrl-C stops everything.
+
+**Every weekday 09:00–18:00** (no cron; batch jobs can wait hours). A PBS standing reservation keeps
+a GPU free for the window, and one job per day waits in it. The job ends at 18:00:
+
+```bash
+bash pbs_remote_inference/pbs/reserve.sh so101 20261120   # last day YYYYMMDD
+bash pbs_remote_inference/pbs/reserve.sh yam   20261120
+pbs_rstat                                                 # CO = confirmed
+pbs_rdel <S-id>                                           # cancel, with its queued jobs
+```
+
+Job output goes to `logs/pbs_remote_inference/reserved/<robot>-<YYYYMMDD>.log`.
 
 **Check / stop a batch job:**
 

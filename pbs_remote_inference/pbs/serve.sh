@@ -2,7 +2,8 @@
 # Start one colosseum_server.py for <family> on <robot> at 127.0.0.1:<port>, inside that
 # family's container + venv. Run from the repo root on a GPU node after
 # `module load singularity`. Used by <family>.pbs (one model) and cohost.pbs (several
-# models sharing one GPU). Blocks until the server exits.
+# models sharing one GPU). Blocks until the server exits. SERVE_GPU=<GPU UUID or index>
+# pins the server to one of the job's GPUs (interactive_one_for_all.sh); unset, it sees them all.
 #
 #   bash pbs_remote_inference/pbs/serve.sh <family> <robot> <port>
 set -e
@@ -65,6 +66,7 @@ singularity exec -e --nv \
     --env TEMP=/scratch/e1583535/tmp \
     --env TMP=/scratch/e1583535/tmp \
     --env FAMILY="$FAMILY" --env ROBOT="$ROBOT" --env PORT="$PORT" --env VENV="$VENV" --env CONFIG="$CONFIG" \
+    ${SERVE_GPU:+--env CUDA_VISIBLE_DEVICES="$SERVE_GPU"} \
     "/app1/common/singularity-img/hopper/pytorch/$IMAGE" bash << 'EOS' > "$(printf "$LOG" stdout)" 2> "$(printf "$LOG" stderr)"
 mkdir -p /scratch/e1583535/tmp
 source /scratch/e1583535/virtualenvs/$VENV/bin/activate

@@ -12,10 +12,12 @@ pbs_remote_inference/
 ├── policy_server_relay.py         # runs on the Policy Server machine: 127.0.0.1:<port> -> remote model
 └── pbs/
     ├── interactive.sh             # run models inside an interactive GPU job (qsub -I)
+    ├── interactive_one_for_all.sh # so101 + yam in one 2-GPU interactive job
     ├── <family>.pbs               # batch job: one model
     ├── cohost.pbs                 # batch job: several families, one embodiment, one GPU
     ├── serve.sh                   # start one family/robot/port in that family's container + venv
     ├── ports.sh                   # first model port per embodiment: so101 9101, yam 9111, franka 9121
+    ├── reserve.sh                 # weekday 09:00-18:00 standing reservation + one cohost job per day
     ├── tailscale.sh               # join the tailnet (TUNNEL=tailscale)
     └── tunnel_cmd.sh              # print an SSH tunnel command for a running job
 ```
