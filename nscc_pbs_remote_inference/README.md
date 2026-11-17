@@ -63,7 +63,7 @@ for i in 1 2 3 4 5; do python3 policy_server_relay.py --remote http://colosseum-
 for i in 1 2 3 4 5; do python3 policy_server_relay.py --remote http://colosseum-yam:911$i   --port 921$i & done
 ```
 
-Unlike Hopper, yam listens on ports 9111-9115, because `g1` jobs can share a node.
+As on Hopper, yam listens on ports 9111-9115, so an so101 and a yam job on the same node don't collide.
 
 Endpoints for the Policy Server config:
 

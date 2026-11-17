@@ -15,6 +15,7 @@ pbs_remote_inference/
     ├── <family>.pbs               # batch job: one model
     ├── cohost.pbs                 # batch job: several families, one embodiment, one GPU
     ├── serve.sh                   # start one family/robot/port in that family's container + venv
+    ├── ports.sh                   # first model port per embodiment: so101 9101, yam 9111, franka 9121
     ├── tailscale.sh               # join the tailnet (TUNNEL=tailscale)
     └── tunnel_cmd.sh              # print an SSH tunnel command for a running job
 ```
@@ -122,7 +123,7 @@ One-time setup:
 2. Install Tailscale on the Policy Server machine and log in to the same tailnet. For
    several operators' laptops, use a dedicated tailnet: tag the GPU key
    `tag:colosseum-gpu`, give laptops a `tag:policy-server` key, and allow only
-   `tag:policy-server -> tag:colosseum-gpu:9101-9110` in the access controls.
+   `tag:policy-server -> tag:colosseum-gpu:9101-9130` in the access controls.
 
 Each run:
 1. Start the models with `interactive.sh ... tailscale` or a batch job with `TUNNEL=tailscale` (see README).

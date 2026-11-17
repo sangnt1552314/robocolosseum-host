@@ -21,10 +21,12 @@ ip = socket.gethostbyname(node)
 env = job['Variable_List']
 robot = env.get('EMBODIMENT', '?')
 name = job['Job_Name']
-if env.get('MODELS'):                      # cohost.pbs: ports 9101, 9102, ... in MODELS order
-    models = [(m, 9101 + i) for i, m in enumerate(env['MODELS'].split(':'))]
+base = {'so101': 9101, 'yam': 9111, 'franka': 9121}.get(robot, 9101)   # as in ports.sh
+if env.get('MODELS'):                      # cohost.pbs: consecutive ports in MODELS order
+    base = int(env.get('BASE_PORT') or base)
+    models = [(m, base + i) for i, m in enumerate(env['MODELS'].split(':'))]
 else:                                      # <family>.pbs: family from the job name colosseum-<family>
-    models = [(name.removeprefix('colosseum-'), int(env.get('PORT') or 9101))]
+    models = [(name.removeprefix('colosseum-'), int(env.get('PORT') or base))]
 local = $LOCAL
 forwards = ' '.join(f'-L {local + i}:127.0.0.1:{port}' for i, (_, port) in enumerate(models))
 print(f'# job $JOB on {node} ({ip}), robot {robot}. Run on the Policy Server machine:')

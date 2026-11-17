@@ -17,4 +17,5 @@ cd "${PBS_O_WORKDIR:-.}"
 module load singularity
 TS_HOSTNAME=${TS_HOSTNAME:-colosseum-$EMBODIMENT-molmoact2}
 [ "$TUNNEL" = tailscale ] && source pbs_remote_inference/pbs/tailscale.sh
-bash pbs_remote_inference/pbs/serve.sh molmoact2 "$EMBODIMENT" "${PORT:-9101}"
+source pbs_remote_inference/pbs/ports.sh
+bash pbs_remote_inference/pbs/serve.sh molmoact2 "$EMBODIMENT" "${PORT:-$(base_port "$EMBODIMENT")}"

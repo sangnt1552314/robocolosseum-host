@@ -48,7 +48,7 @@ case "${TUNNEL:-}" in
         /scratch/e1583535/tools/cloudflared/cloudflared tunnel --no-autoupdate --protocol http2 \
             --url "http://127.0.0.1:$PORT" > "$TUNNEL_LOG" 2>&1 & ;;
 esac
-if [ -n "${TUNNEL:-}" ]; then
+if [ "${TUNNEL:-}" = ngrok ] || [ "${TUNNEL:-}" = cloudflare ]; then   # tailscale: tailscale.sh
     trap "kill $! 2>/dev/null; rm -f ${POLICY:-}" EXIT
     ( for _ in $(seq 90); do
           URL=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com|url=https://[^ ]+' "$TUNNEL_LOG" \

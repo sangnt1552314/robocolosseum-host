@@ -1,7 +1,8 @@
 #!/bin/bash
 # Serve models from an INTERACTIVE GPU job, with no queue wait per test. Same layout as
-# cohost.pbs: one colosseum_server.py per family on 127.0.0.1:9101, 9102, ... (MODELS order),
-# each in its family's container + venv (serve.sh), plus an optional tunnel.
+# cohost.pbs: one colosseum_server.py per family on consecutive ports in MODELS order from
+# 127.0.0.1:9101 (so101), 9111 (yam) or 9121 (franka) (BASE_PORT overrides), each in its
+# family's container + venv (serve.sh), plus an optional tunnel.
 #
 #   qsub -I -P CFP05-SF-002 -q auto -l select=1:ngpus=1 -l walltime=02:00:00   # get a GPU node
 #   cd /scratch/e1583535/projects/robocolosseum-hosted
@@ -16,6 +17,8 @@ ROBOT=${1:?usage: interactive.sh <robot> <family[:family...]> [tailscale|ngrok]}
 MODELS=${2:?usage: interactive.sh <robot> <family[:family...]> [tailscale|ngrok]}
 TUNNEL_KIND=${3:-}
 export PBS_JOBID=${PBS_JOBID:-interactive-$$}
+source pbs_remote_inference/pbs/ports.sh
+BASE_PORT=${BASE_PORT:-$(base_port "$ROBOT")}
 nvidia-smi -L > /dev/null 2>&1 || { echo "ERROR: no GPU here. Run this inside an interactive GPU job (qsub -I ...), not on the login node." >&2; exit 1; }
 
 if [ -d /.singularity.d ] || [ -n "${SINGULARITY_CONTAINER:-}${APPTAINER_CONTAINER:-}" ]; then
@@ -36,7 +39,7 @@ fi
 
 # Each server in its own process group, so Ctrl-C here can stop it with everything it started.
 PIDS=()
-PORT=9101
+PORT=$BASE_PORT
 for FAMILY in ${MODELS//:/ }; do
     setsid bash pbs_remote_inference/pbs/serve.sh "$FAMILY" "$ROBOT" "$PORT" &
     PIDS+=($!)
@@ -50,7 +53,7 @@ stop() {
 }
 trap stop INT TERM
 
-PORT=9101; i=0; OK=0
+PORT=$BASE_PORT; i=0; OK=0
 for FAMILY in ${MODELS//:/ }; do
     while ! curl -sf -m 2 "http://127.0.0.1:$PORT/healthz" > /dev/null; do
         if ! kill -0 "${PIDS[$i]}" 2> /dev/null; then   # this family's server exited
@@ -63,6 +66,6 @@ for FAMILY in ${MODELS//:/ }; do
     PORT=$((PORT + 1)); i=$((i + 1))
 done
 [ $OK -gt 0 ] || { echo "ERROR: no model started." >&2; stop; }
-[ "$TUNNEL_KIND" = tailscale ] && echo "Policy Server side: http://$TS_HOSTNAME:9101, :9102, ... (via the local relay)"
+[ "$TUNNEL_KIND" = tailscale ] && echo "Policy Server side: http://$TS_HOSTNAME:$BASE_PORT, :$((BASE_PORT + 1)), ... (via the local relay)"
 echo "All models up. Ctrl-C to stop."
 wait

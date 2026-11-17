@@ -48,8 +48,12 @@ then copy `pbs_remote_inference/policy_server_relay.py` there.
 tailscale status          # colosseum-so101 and colosseum-yam should be listed
 # relays: the Policy Server only accepts http://127.0.0.1:<port> endpoints
 for i in 1 2 3 4 5; do python3 policy_server_relay.py --remote http://colosseum-so101:910$i --port 920$i & done
-for i in 1 2 3 4 5; do python3 policy_server_relay.py --remote http://colosseum-yam:910$i   --port 921$i & done
+for i in 1 2 3 4 5; do python3 policy_server_relay.py --remote http://colosseum-yam:911$i   --port 921$i & done
 ```
+
+so101 listens on ports 9101-9105 and yam on 9111-9115, the same as NSCC, so
+[`run_nscc_eval.sh`](../nscc_pbs_remote_inference/README.md#3-run-an-evaluation-from-the-laptop)
+also works with these jobs. Pass it `--no-sam3`, because Hopper jobs don't run SAM3.
 
 Endpoints for the Policy Server config:
 
